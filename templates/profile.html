@@ -1,0 +1,40 @@
+{% extends "layout.html" %}
+
+{% block title %}
+    Profile
+{% endblock %}
+
+{% block main %}
+    <h1>Profile</h1>
+    <div class="container" style="padding:30px">
+        <table class="table table-bordered mt-3">
+            <tbody style="vertical-align:middle">
+                <tr>
+                    <td class="p-4">
+                        <form id="username-form" action="/profile" method="POST">
+                            <b>Change your username:</b><br>
+                            <span class="d-block mt-3">Your current username: <b>{{ username }}</b></span>
+                            <input autocomplete="off" class="form-control mx-auto w-auto mt-3" name="new_username" id="new_username"
+                            placeholder="Enter your new username" type="text" required minlength="3">
+                            <button class="btn btn-primary mt-3" type="submit" name="form" value="form1">Submit</button>
+                        </form>
+                    </td>
+                </tr>
+                <tr>
+                    <td class="p-4">
+                        <form id="password-form" action="/profile" method="POST">
+                            <b>Change your password:</b><br>
+                            <input autocomplete="off" class="form-control mx-auto w-auto mt-3" name="old_password" id="old_password"
+                            placeholder="Enter old password" type="password" required>
+                            <input autocomplete="off" class="form-control mx-auto w-auto mt-3" name="new_password" id="new_password"
+                            placeholder="Enter new password" type="password" required>
+                            <input autocomplete="off" class="form-control mx-auto w-auto mt-3" name="conf_password" id="conf_password"
+                            placeholder="Re-Enter new password" type="password" required>
+                            <button class="btn btn-primary mt-3" type="submit" name="form" value="form2">Submit</button>
+                        </form>
+                    </td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+{% endblock %}

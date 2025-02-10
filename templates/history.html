@@ -1,0 +1,35 @@
+{% extends "layout.html" %}
+
+{% block title %}
+    History
+{% endblock %}
+
+{% block main %}
+    <h1>History</h1>
+    <div class="container" style="padding:30px">
+        <table class="table table-striped table bordered mt-3">
+            <thead class="table-dark">
+                <tr>
+                    <th>#</th>
+                    <th>Date and Time</th>
+                    <th>Bought or Sold</th>
+                    <th>Stock's symbol</th>
+                    <th>Price</th>
+                    <th>No. of shares</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for transaction in transactions %}
+                <tr>
+                    <td>{{ loop.index }}</td>
+                    <td>{{ transaction.time.strftime('%Y-%m-%d %H:%M:%S') }}</td>
+                    <td>{{ transaction.transaction_type }}</td>
+                    <td>{{ transaction.ticker }}</td>
+                    <td>{{ transaction.price | usd }}</td>
+                    <td>{{ transaction.amount }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+{% endblock %}

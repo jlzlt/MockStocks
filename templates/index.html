@@ -1,0 +1,43 @@
+{% extends "layout.html" %}
+
+{% block title %}
+    Index
+{% endblock %}
+
+{% block main %}
+    <h1>Your Portfolio</h1>
+    <div class="container" style="padding:30px">
+        <table class="table table-dark table-striped table bordered mt-3">
+            <thead class="table-dark">
+                <tr>
+                    <th>Symbol</th>
+                    <th>Shares</th>
+                    <th>Curent price</th>
+                    <th>Total</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for stock in stocks %}
+                <tr>
+                    <td>{{ stock.stock_owned }}</td>
+                    <td>{{ stock.amount_owned }}</td>
+                    <td>{{ current_prices[stock.stock_owned] | usd }}</td>
+                    <td>{{ (stock.amount_owned * current_prices[stock.stock_owned]) | usd }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+            <tfoot>
+                <tr>
+                    <td colspan="2"></td>
+                    <td><strong>Cash</strong></td>
+                    <td>{{ cash[0]["cash"] | usd }}</td>
+                </tr>
+                <tr>
+                    <td colspan="2"></td>
+                    <td><strong>TOTAL (Cash + Stocks)</strong></td>
+                    <td>{{ (sum_total + cash[0]["cash"]) | usd }}</td>
+                </tr>
+            </tfoot>
+        </table>        
+    </div>
+{% endblock %}
