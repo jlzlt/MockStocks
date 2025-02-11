@@ -11,7 +11,7 @@
             <tbody style="vertical-align:middle">
                 <tr>
                     <td class="p-4">
-                        <form id="username-form" action="/profile" method="POST">
+                        <form id="username-form" action="/profile" method="POST" onsubmit="return confirmChange('username')">
                             <b>Change your username:</b><br>
                             <span class="d-block mt-3">Your current username: <b>{{ username }}</b></span>
                             <input autocomplete="off" class="form-control mx-auto w-auto mt-3" name="new_username" id="new_username"
@@ -22,7 +22,7 @@
                 </tr>
                 <tr>
                     <td class="p-4">
-                        <form id="password-form" action="/profile" method="POST">
+                        <form id="password-form" action="/profile" method="POST" onsubmit="return confirmChange('password')">
                             <b>Change your password:</b><br>
                             <input autocomplete="off" class="form-control mx-auto w-auto mt-3" name="old_password" id="old_password"
                             placeholder="Enter old password" type="password" required>
@@ -37,4 +37,14 @@
             </tbody>
         </table>
     </div>
+    <script>
+        function confirmChange(type) {
+            if (type === 'username') {
+                return confirm("Are you sure you want to change your username?");
+            } else if (type === 'password') {
+                return confirm("Are you sure you want to change your password?");
+            }
+            return false;
+        }
+    </script>
 {% endblock %}
