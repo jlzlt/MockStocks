@@ -31,11 +31,7 @@ def apology(message, code=400):
 
 # Login required
 def login_required(f):
-    """
-    Decorate routes to require login.
-
-    https://flask.palletsprojects.com/en/latest/patterns/viewdecorators/
-    """
+    """Decorate routes to require login."""
 
     @wraps(f)
     def decorated_function(*args, **kwargs):

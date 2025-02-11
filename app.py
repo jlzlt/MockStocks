@@ -1,10 +1,14 @@
 import os
 import datetime
-from flask import Flask, flash, redirect, render_template, request, session, g
+import uuid
+from flask import Flask, flash, redirect, render_template, request, session, g, jsonify
 from flask_session import Session
+from flask_limiter import Limiter
+from flask_limiter.util import get_remote_address
 from werkzeug.security import check_password_hash, generate_password_hash
 from helpers import apology, login_required, lookup, usd, get_stock_chart
 from database import close_db, initialize_database, execute_query
+from datetime import timedelta
 
 # Configure application
 app = Flask(__name__)
@@ -12,9 +16,15 @@ app = Flask(__name__)
 # Custom filter
 app.jinja_env.filters["usd"] = usd
 
+# Session timout configuration
+app.config["SESSION_PERMANENT"] = True
+app.config["PERMANENT_SESSION_LIFETIME"] = timedelta(minutes=15)
 # Configure session to use filesystem (instead of signed cookies)
-app.config["SESSION_PERMANENT"] = False
 app.config["SESSION_TYPE"] = "filesystem"
+# Prevent JavaScript from accessing the session cookie
+app.config["SESSION_COOKIE_HTTPONLY"] = True
+# Prevent cookies from being sent with cross-site requests
+app.config["SESSION_COOKIE_SAMESITE"] = "Lax"
 Session(app)
 
 # Initialize database
@@ -25,6 +35,33 @@ initialize_database()
 def teardown_db(exception):
     close_db(exception)
 
+# Rate-limiting key function
+def rate_limit_key():
+    return session.get("user_id") or session.get("device_id") or get_remote_address()
+
+# Initialize Flask-Limiter with key function
+limiter = Limiter(
+    get_remote_address,
+    app=app,
+    default_limits=["100 per hour"]
+)
+
+@app.before_request
+def manage_session():
+    # Ensure session follows configured lifetime
+    session.permanent = True  
+
+    # Assign device ID if not present
+    if "device_id" not in session:
+        session["device_id"] = request.cookies.get("device_id", str(uuid.uuid4()))
+
+    if "user_id" in session:
+        # Reset timeout on user activity
+        session.modified = True  
+    elif request.endpoint not in ["login", "register", "static"]:
+        # Redirect if session expired
+        return redirect("/login")
+
 # Prevent browsers from caching responses
 @app.after_request
 def after_request(response):
@@ -33,6 +70,10 @@ def after_request(response):
     response.headers["Expires"] = 0
     response.headers["Pragma"] = "no-cache"
     return response
+
+@app.errorhandler(429)
+def ratelimit_exceeded(e):
+    return apology("Too many attempts, come back later", 429)
 
 
 @app.route("/")
@@ -72,6 +113,7 @@ def index():
 
 
 @app.route("/login", methods=["GET", "POST"])
+@limiter.limit("10 per minute", methods=["POST"])
 def login():
     """Log user in"""
 
@@ -121,6 +163,7 @@ def logout():
 
 
 @app.route("/register", methods=["GET", "POST"])
+@limiter.limit("10 per minute", methods=["POST"])
 def register():
     """Register user"""
 
@@ -169,6 +212,7 @@ def register():
 
 
 @app.route("/quote", methods=["GET", "POST"])
+@limiter.limit("60 per minute", methods=["POST"])
 @login_required
 def quote():
     """Get stock quote."""
@@ -205,6 +249,7 @@ def quote():
 
 
 @app.route("/buy", methods=["GET", "POST"])
+@limiter.limit("100 per minute", methods=["POST"])
 @login_required
 def buy():
     """Buy shares of stock"""
@@ -257,6 +302,7 @@ def buy():
 
 
 @app.route("/sell", methods=["GET", "POST"])
+@limiter.limit("100 per minute", methods=["POST"])
 @login_required
 def sell():
     """Sell shares of stock"""
@@ -355,6 +401,7 @@ def history():
 
 
 @app.route("/profile", methods=["GET", "POST"])
+@limiter.limit("10 per minute", methods=["POST"])
 @login_required
 def profile():
     """Change profile settings"""
