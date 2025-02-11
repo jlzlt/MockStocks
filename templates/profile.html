@@ -11,40 +11,76 @@
             <tbody style="vertical-align:middle">
                 <tr>
                     <td class="p-4">
-                        <form id="username-form" action="/profile" method="POST" onsubmit="return confirmChange('username')">
+                        <form id="username-form" action="/profile" method="POST">
                             <b>Change your username:</b><br>
                             <span class="d-block mt-3">Your current username: <b>{{ username }}</b></span>
+                            <input type="hidden" name="form" value="form1">
                             <input autocomplete="off" class="form-control mx-auto w-auto mt-3" name="new_username" id="new_username"
                             placeholder="Enter your new username" type="text" required minlength="3">
-                            <button class="btn btn-primary mt-3" type="submit" name="form" value="form1">Submit</button>
+                            <button class="btn btn-primary mt-3 confirm-btn" type="button" data-form="username-form" data-bs-toggle="modal" data-bs-target="#confirmModal">
+                                Submit
+                            </button>
                         </form>
                     </td>
                 </tr>
                 <tr>
                     <td class="p-4">
-                        <form id="password-form" action="/profile" method="POST" onsubmit="return confirmChange('password')">
+                        <form id="password-form" action="/profile" method="POST">
                             <b>Change your password:</b><br>
+                            <input type="hidden" name="form" value="form2">
                             <input autocomplete="off" class="form-control mx-auto w-auto mt-3" name="old_password" id="old_password"
                             placeholder="Enter old password" type="password" required>
                             <input autocomplete="off" class="form-control mx-auto w-auto mt-3" name="new_password" id="new_password"
                             placeholder="Enter new password" type="password" required>
                             <input autocomplete="off" class="form-control mx-auto w-auto mt-3" name="conf_password" id="conf_password"
                             placeholder="Re-Enter new password" type="password" required>
-                            <button class="btn btn-primary mt-3" type="submit" name="form" value="form2">Submit</button>
+                            <button class="btn btn-primary mt-3 confirm-btn" type="button" data-form="password-form" data-bs-toggle="modal" data-bs-target="#confirmModal">
+                                Submit
+                            </button>
                         </form>
                     </td>
                 </tr>
             </tbody>
         </table>
     </div>
+
+    <!-- 🔄 Single Reusable Confirmation Modal -->
+    <div class="modal fade" id="confirmModal" tabindex="-1">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Confirm Action</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    Are you sure you want to proceed?
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="button" class="btn btn-primary" id="confirm-action-btn">Confirm</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <script>
-        function confirmChange(type) {
-            if (type === 'username') {
-                return confirm("Are you sure you want to change your username?");
-            } else if (type === 'password') {
-                return confirm("Are you sure you want to change your password?");
+    document.addEventListener("DOMContentLoaded", function () {
+        let formToSubmit = null;
+
+        // Bind confirmation buttons dynamically
+        document.querySelectorAll(".confirm-btn").forEach(button => {
+            button.addEventListener("click", function () {
+                formToSubmit = document.getElementById(this.dataset.form);
+            });
+        });
+
+        // Submit the selected form when confirming
+        document.getElementById("confirm-action-btn").addEventListener("click", function () {
+            if (formToSubmit) {
+                formToSubmit.submit();
             }
-            return false;
-        }
+        });
+    });
     </script>
+
 {% endblock %}
