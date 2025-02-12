@@ -1,0 +1,125 @@
+{% extends "layout.html" %}
+
+{% block title %}Manage Your Trade Propositions{% endblock %}
+
+{% block main %}
+    <h1 style="padding-bottom: 30px;">Manage Your Trade Propositions</h1>
+
+    <div class="container" style="padding:30px">        
+        <table class="table table-striped mt-3">
+            <thead>
+                <tr>
+                    <th>Time posted</th>
+                    <th>Type</th>
+                    <th>Stock</th>
+                    <th>Quantity</th>
+                    <th>Price</th>
+                    <th>Total</th>
+                    <th>Comment</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for trade in p2p_trades %}
+                <tr>
+                    <td>{{ trade.time_posted.strftime('%Y-%m-%d %H:%M:%S') }}</td>
+                    <td>{{ trade.type }}</td>
+                    <td>{{ trade.stock_ticker }}</td>
+                    <td>{{ trade.amount }}</td>
+                    <td>{{ trade.price }}</td>
+                    <td>{{ trade.amount * trade.price }}</td>
+                    <td>{{ trade.comment }}</td>
+                    <td>
+                        <button class="btn btn-danger btn-sm" 
+                            onclick="removeTrade('{{ trade.p2p_id }}', '{{ trade.stock_ticker }}', '{{ trade.amount }}', '{{ trade.price }}')">
+                            Remove
+                        </button>
+                        <button class="btn btn-primary btn-sm" 
+                            onclick="editTrade('{{ trade.p2p_id }}', '{{ trade.stock_ticker }}', '{{ trade.amount }}', '{{ trade.price }}', '{{ trade.comment }}')">
+                            Edit
+                        </button>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>    
+
+    <!-- Remove Confirmation Modal -->
+    <div class="modal fade" id="removeConfirmModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Confirm Trade Removal</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <p id="removeConfirmText"></p>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <form id="removeTradeForm" action="/managep2p" method="POST">
+                        <input type="hidden" name="action" value="remove">
+                        <input type="hidden" id="remove_trade_id" name="trade_id" value="">
+                        <button type="submit" class="btn btn-danger">Confirm</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Edit Trade Modal -->
+    <div class="modal fade" id="editTradeModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Edit Trade</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <form id="editTradeForm" action="/managep2p" method="POST">
+                        <input type="hidden" name="action" value="edit">
+                        <input type="hidden" id="edit_trade_id" name="trade_id" value="">
+                        <div class="mb-3">
+                            <label class="form-label">Stock Ticker:</label>
+                            <input type="text" id="edit_stock_ticker" class="form-control" readonly>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Quantity:</label>
+                            <input type="number" step="0.01" id="edit_amount" name="amount" class="form-control" min="0.01" required>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Price:</label>
+                            <input type="number" step="0.01" id="edit_price" name="price" class="form-control" min="0.01" required>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Comment:</label>
+                            <input type="text" id="edit_comment" name="comment" class="form-control" max="200">
+                        </div>
+                        <button type="submit" class="btn btn-primary">Save Changes</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        function removeTrade(tradeId, stock, amount, price) {
+            let message = `Are you sure you want to remove your trade for <strong>${amount} shares</strong> of <strong>${stock}</strong> at <strong>$${price} per share</strong>?`;
+            document.getElementById("removeConfirmText").innerHTML = message;
+            document.getElementById("remove_trade_id").value = tradeId;
+            let modal = new bootstrap.Modal(document.getElementById('removeConfirmModal'));
+            modal.show();
+        }
+
+        function editTrade(tradeId, stock, amount, price, comment) {
+            document.getElementById("edit_trade_id").value = tradeId;
+            document.getElementById("edit_stock_ticker").value = stock;
+            document.getElementById("edit_amount").value = amount;
+            document.getElementById("edit_price").value = price;
+            document.getElementById("edit_comment").value = comment;
+            let modal = new bootstrap.Modal(document.getElementById('editTradeModal'));
+            modal.show();
+        }
+    </script>
+{% endblock %}

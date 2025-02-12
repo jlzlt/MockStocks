@@ -12,6 +12,7 @@
                 <tr>
                     <th>Symbol</th>
                     <th>Shares</th>
+                    <th>Average purchase price</th>
                     <th>Curent price</th>
                     <th>Total</th>
                 </tr>
@@ -21,6 +22,7 @@
                 <tr>
                     <td>{{ stock.stock_owned }}</td>
                     <td>{{ stock.amount_owned }}</td>
+                    <td>{{ stock.avg_price | usd }}</td>
                     <td>{{ current_prices[stock.stock_owned] | usd }}</td>
                     <td>{{ (stock.amount_owned * current_prices[stock.stock_owned]) | usd }}</td>
                 </tr>
@@ -28,14 +30,20 @@
             </tbody>
             <tfoot>
                 <tr>
-                    <td colspan="2"></td>
+                    <td colspan="3"></td>
                     <td><strong>Cash</strong></td>
                     <td>{{ cash[0]["cash"] | usd }}</td>
                 </tr>
+                {% if cash[0]["frozen_cash"] > 0 %}
                 <tr>
-                    <td colspan="2"></td>
+                    <td colspan="3"></td>
+                    <td><strong>Frozen Cash</strong></td>
+                    <td>{{ cash[0]["frozen_cash"] | usd }}</td>
+                {% endif %}
+                <tr>
+                    <td colspan="3"></td>
                     <td><strong>TOTAL (Cash + Stocks)</strong></td>
-                    <td>{{ (sum_total + cash[0]["cash"]) | usd }}</td>
+                    <td>{{ (sum_total + cash[0]["cash"] + cash[0]["frozen_cash"]) | usd }}</td>
                 </tr>
             </tfoot>
         </table>        

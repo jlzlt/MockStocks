@@ -48,7 +48,19 @@ def initialize_database():
             id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
             username TEXT UNIQUE NOT NULL,
             hash TEXT NOT NULL,
-            cash NUMERIC NOT NULL DEFAULT 10000.00
+            cash NUMERIC NOT NULL DEFAULT 10000.00,
+            frozen_cash NUMERIC DEFAULT 0.00
+        );
+                         
+        CREATE TABLE IF NOT EXISTS stock_ownership (
+            ownership_id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+            stock_ticker TEXT NOT NULL,
+            amount NUMERIC NOT NULL,
+            frozen_amount NUMERIC DEFAULT 0.00,
+            avg_price REAL NOT NULL,
+            user_id INTEGER NOT NULL,
+            FOREIGN KEY (user_id) REFERENCES users(id),
+            UNIQUE (user_id, stock_ticker)
         );
 
         CREATE TABLE IF NOT EXISTS stock_buys (
@@ -89,10 +101,16 @@ def initialize_database():
 
         -- Indexes for faster lookups
         CREATE UNIQUE INDEX IF NOT EXISTS idx_username ON users (username);
-        CREATE UNIQUE INDEX IF NOT EXISTS idx_buy_id ON stock_buys (buy_id);
         CREATE INDEX IF NOT EXISTS idx_user_id_buys ON stock_buys (user_id);
-        CREATE UNIQUE INDEX IF NOT EXISTS idx_sell_id ON stock_sells (sell_id);
         CREATE INDEX IF NOT EXISTS idx_user_id_sells ON stock_sells (user_id);
+        CREATE INDEX IF NOT EXISTS idx_stock_ownership_user_id ON stock_ownership (user_id);
+        CREATE INDEX IF NOT EXISTS idx_p2p_market_user_id ON p2p_market (user_id);
+        CREATE INDEX IF NOT EXISTS idx_stock_buys_ticker ON stock_buys (stock_bought);
+        CREATE INDEX IF NOT EXISTS idx_stock_sells_ticker ON stock_sells (stock_sold);
+        CREATE INDEX IF NOT EXISTS idx_p2p_market_ticker ON p2p_market (stock_ticker);
+        CREATE INDEX IF NOT EXISTS idx_stock_buys_time ON stock_buys (time_bought);
+        CREATE INDEX IF NOT EXISTS idx_stock_sells_time ON stock_sells (time_sold);
+        CREATE INDEX IF NOT EXISTS idx_p2p_market_time ON p2p_market (time_posted);
         """)
 
         conn.commit()

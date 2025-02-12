@@ -84,18 +84,13 @@ def index():
     # user_id variable for later use
     user_id = session["user_id"]
 
-    # Get stock tickers and the amount of stocks owned by this user
-    stocks = execute_query("""SELECT b.stock_bought AS stock_owned,
-                                SUM(b.amount_bought) - COALESCE(s.total_sold, 0) AS amount_owned
-                            FROM stock_buys b
-                            LEFT JOIN (
-                                SELECT stock_sold, SUM(amount_sold) AS total_sold, user_id
-                                FROM stock_sells
-                                GROUP BY stock_sold, user_id
-                            ) s ON b.stock_bought = s.stock_sold AND b.user_id = s.user_id
-                            WHERE b.user_id = ?
-                            GROUP BY b.stock_bought
-                            HAVING amount_owned > 0""", (user_id,))
+    # Get stock tickers, average price and the amount of stocks owned by this user
+    stocks = execute_query(
+        """SELECT avg_price, stock_ticker AS stock_owned, amount AS amount_owned
+        FROM stock_ownership
+        WHERE user_id = ? AND amount > 0""",
+        (user_id,)
+    )
 
     # Populate current prices dictionary to get up to date prices for the stocks user owns
     current_prices = {}
@@ -104,11 +99,11 @@ def index():
         current_prices[stocks[stock]["stock_owned"]] = quote["price"]
 
     # Find out how much cash user has
-    cash = execute_query("SELECT cash FROM users WHERE id = ?", (user_id,))
+    cash = execute_query("SELECT cash, frozen_cash FROM users WHERE id = ?", (user_id,))
 
     # Calculate how much currently owned stocks by user are worth in current prices
     sum_total = sum(stock["amount_owned"] * current_prices[stock["stock_owned"]] for stock in stocks)
-
+  
     return render_template("index.html", stocks=stocks, current_prices=current_prices, cash=cash, sum_total=sum_total)
 
 
@@ -232,8 +227,8 @@ def quote():
         # Get quote for user's stock
         stock = lookup(quote)
 
-        # Check whether stock is found
-        if not stock:
+        # Check whether stock is found        
+        if stock["name"] == "Unknown":
             return apology("no such stock found", 400)
 
         # Variables from stock quote
@@ -241,6 +236,7 @@ def quote():
         price = stock["price"]
         symbol = stock["symbol"]
 
+        # Generate stock chart from yfinance using plotly
         chart = get_stock_chart(symbol)
 
         # If quote is available we render info
@@ -263,7 +259,6 @@ def buy():
         symbol = request.form.get("symbol").upper()
         # Get current quote for the stock user wants to buy
         quote = lookup(symbol)
-        print(quote)
         # Get user id
         user_id = session["user_id"]
 
@@ -294,6 +289,19 @@ def buy():
         # Add stock buy into database
         execute_query("INSERT INTO stock_buys (time_bought, stock_bought, price_bought, amount_bought, type, user_id) VALUES (?, ?, ?, ?, ?, ?)",
                    (datetime.datetime.now(), symbol, quote["price"], shares, "MARKET", user_id))
+        
+        # Add stock into user's portfolio
+        execute_query(
+            """
+            INSERT INTO stock_ownership (stock_ticker, amount, avg_price, user_id) 
+            VALUES (?, ?, ?, ?)
+            ON CONFLICT(user_id, stock_ticker)        
+            DO UPDATE SET 
+                amount = stock_ownership.amount + ?,  
+                avg_price = ((stock_ownership.avg_price * stock_ownership.amount) + (? * ?)) / (stock_ownership.amount + ?);
+            """, 
+            (symbol, shares, quote["price"], user_id, shares, quote["price"], shares, shares)
+        )
 
         # Update user cash after completing purchase
         execute_query("UPDATE users SET cash = ? WHERE id = ?", (usercash[0]["cash"] - shares * quote["price"], user_id))
@@ -314,18 +322,13 @@ def sell():
     # user_id variable for later use
     user_id = session["user_id"]
 
-    # Get all the stock user owns and the amounts owned
-    stocks_owned = execute_query("""SELECT b.stock_bought AS stock_owned,
-                            SUM(b.amount_bought) - COALESCE(s.total_sold, 0) AS amount_owned
-                        FROM stock_buys b
-                        LEFT JOIN (
-                            SELECT stock_sold, SUM(amount_sold) AS total_sold, user_id
-                            FROM stock_sells
-                            GROUP BY stock_sold, user_id
-                        ) s ON b.stock_bought = s.stock_sold AND b.user_id = s.user_id
-                        WHERE b.user_id = ?
-                        GROUP BY b.stock_bought
-                        HAVING amount_owned > 0""", (user_id,))
+    # Get stock tickers and the amount of stocks owned by this user
+    stocks_owned = execute_query(
+        """SELECT stock_ticker AS stock_owned, amount AS amount_owned
+        FROM stock_ownership
+        WHERE user_id = ? AND amount > 0""",
+        (user_id,)
+    )
 
     # Do this if user accesses page with POST method
     if request.method == "POST":
@@ -356,14 +359,30 @@ def sell():
         if float(stock_amount) > amount_owned:
             return apology("You don't have enough stocks to sell", 400)
 
-        # Sell the stocks
+        # Get stock quote from yfinance
         quote = lookup(user_stock)
+
+        # Insert stock sell into database
         execute_query("INSERT INTO stock_sells (time_sold, stock_sold, price_sold, amount_sold, type, user_id) VALUES (?, ?, ?, ?, ?, ?)",
                     (datetime.datetime.now(), user_stock, quote["price"], stock_amount, "MARKET", user_id))
+        
+        # Reduce stock amount owned by user
+        execute_query(
+            "UPDATE stock_ownership SET amount = amount - ? WHERE user_id = ? AND stock_ticker = ?",
+            (stock_amount, user_id, user_stock)
+        )
+
+        # Remove stock entry if amount becomes zero
+        execute_query(
+            "DELETE FROM stock_ownership WHERE user_id = ? AND stock_ticker = ? AND amount = 0",
+            (user_id, user_stock)
+        )
 
         # Update cash for user
-        current_cash = execute_query("SELECT cash FROM users WHERE id = ?", (user_id,))
-        execute_query("UPDATE users SET cash = ? WHERE id = ?", (float(current_cash[0]["cash"]) + float(quote["price"]) * float(stock_amount), user_id))
+        execute_query(
+            "UPDATE users SET cash = cash + ? WHERE id = ?",
+            (float(quote["price"]) * float(stock_amount), user_id)
+        )
 
         flash("Sold!")
         return redirect("/")
@@ -394,7 +413,7 @@ def history():
                                 FROM stock_sells
                                 WHERE user_id = ?
                               ) AS combined_stocks
-                              ORDER BY time;""", (user_id, user_id))
+                              ORDER BY time""", (user_id, user_id))
     
     # Convert to datetime object
     transactions = [dict(transaction) for transaction in transactions]
@@ -504,17 +523,12 @@ def p2p():
         if trade["type"] == "BUYING":
 
             # Get stocks owned by user
-            stocks_owned = execute_query("""SELECT b.stock_bought AS stock_owned,
-                            SUM(b.amount_bought) - COALESCE(s.total_sold, 0) AS amount_owned
-                        FROM stock_buys b
-                        LEFT JOIN (
-                            SELECT stock_sold, SUM(amount_sold) AS total_sold, user_id
-                            FROM stock_sells
-                            GROUP BY stock_sold, user_id
-                        ) s ON b.stock_bought = s.stock_sold AND b.user_id = s.user_id
-                        WHERE b.user_id = ?
-                        GROUP BY b.stock_bought
-                        HAVING amount_owned > 0""", (user_id,))
+            stocks_owned = execute_query(
+                """SELECT stock_ticker AS stock_owned, amount AS amount_owned
+                FROM stock_ownership
+                WHERE user_id = ? AND amount > 0""",
+                (user_id,)
+            )
             
             # Check whether user has enough stocks to sell
             stock_exists = False
@@ -530,14 +544,53 @@ def p2p():
                 return apology("You don't have enough stocks to sell", 400)
 
             # Insert stock sell into database
-            execute_query("INSERT INTO stock_sells (time_sold, stock_sold, price_sold, amount_sold, type, p2p_counterpartyid, user_id) VALUES (?, ?, ?, ?, ?, ?, ?)",
-                        (datetime.datetime.now(), trade["stock_ticker"], trade["price"], trade["amount"], "P2P", trade["user_id"], user_id))
+            execute_query(
+                "INSERT INTO stock_sells (time_sold, stock_sold, price_sold, amount_sold, type, p2p_counterpartyid, user_id) VALUES (?, ?, ?, ?, ?, ?, ?)",
+                (datetime.datetime.now(), trade["stock_ticker"], trade["price"], trade["amount"], "P2P", trade["user_id"], user_id)
+            )
             
+            # Remove frozen cash from buyer user
+            execute_query(
+                "UPDATE users SET frozen_cash = frozen_cash - ? WHERE id = ?", 
+                (trade["price"] * trade["amount"], trade["user_id"])
+            )
+
+            # Add stock into buyer user's portfolio
+            execute_query(
+                """
+                INSERT INTO stock_ownership (stock_ticker, amount, avg_price, user_id) 
+                VALUES (?, ?, ?, ?)
+                ON CONFLICT(user_id, stock_ticker)        
+                DO UPDATE SET 
+                    amount = stock_ownership.amount + ?,  
+                    avg_price = ((stock_ownership.avg_price * stock_ownership.amount) + (? * ?)) / (stock_ownership.amount + ?);
+                """, 
+                (trade["stock_ticker"], trade["amount"], trade["price"], trade["user_id"], trade["amount"], trade["price"], trade["amount"], trade["amount"])
+            )
+
+            # Update stock ownership after completing sale
+            execute_query(
+                "UPDATE stock_ownership SET amount = amount - ? WHERE user_id = ? AND stock_ticker = ?",
+                (trade["amount"], user_id, trade["stock_ticker"])
+            )
+
+            # Remove stock entry if amount becomes zero
+            execute_query(
+                "DELETE FROM stock_ownership WHERE user_id = ? AND stock_ticker = ? AND amount = 0",
+                (user_id, trade["stock_ticker"])
+            )
+
             # Update user cash after completing purchase
-            execute_query("UPDATE users SET cash = cash + ? WHERE id = ?", (trade["price"] * trade["amount"], user_id))
+            execute_query(
+                "UPDATE users SET cash = cash + ? WHERE id = ?", 
+                (trade["price"] * trade["amount"], user_id)
+            )
             
             # Remove trade from p2p_market
-            execute_query("DELETE FROM p2p_market WHERE p2p_id = ?", (trade_id,))
+            execute_query(
+                "DELETE FROM p2p_market WHERE p2p_id = ?", 
+                (trade_id,)
+            )
 
             flash("Sold!")
             return redirect("/p2p")
@@ -551,14 +604,47 @@ def p2p():
                 return apology("You don't have enough cash to buy these stocks", 400)
 
             # Insert stock buy into database
-            execute_query("INSERT INTO stock_buys (time_bought, stock_bought, price_bought, amount_bought, type, p2p_counterpartyid, user_id) VALUES (?, ?, ?, ?, ?, ?, ?)",
-                        (datetime.datetime.now(), trade["stock_ticker"], trade["price"], trade["amount"], "P2P", trade["user_id"], user_id))
+            execute_query(
+                "INSERT INTO stock_buys (time_bought, stock_bought, price_bought, amount_bought, type, p2p_counterpartyid, user_id) VALUES (?, ?, ?, ?, ?, ?, ?)",
+                (datetime.datetime.now(), trade["stock_ticker"], trade["price"], trade["amount"], "P2P", trade["user_id"], user_id)
+            )
             
+            # Remove frozen stocks from seller user
+            execute_query(
+                "UPDATE stock_ownership SET frozen_amount = frozen_amount - ? WHERE user_id = ? AND stock_ticker = ?", 
+                (trade["amount"], trade["user_id"], trade["stock_ticker"])
+            )
+
+            # add cash to seller user
+            execute_query(
+                "UPDATE users SET cash = cash + ? WHERE id = ?", 
+                (trade["price"] * trade["amount"], trade["user_id"])
+            )
+
+            # Add stock into user's portfolio
+            execute_query(
+                """
+                INSERT INTO stock_ownership (stock_ticker, amount, avg_price, user_id) 
+                VALUES (?, ?, ?, ?)
+                ON CONFLICT(user_id, stock_ticker)        
+                DO UPDATE SET 
+                    amount = stock_ownership.amount + ?,  
+                    avg_price = ((stock_ownership.avg_price * stock_ownership.amount) + (? * ?)) / (stock_ownership.amount + ?);
+                """, 
+                (trade["stock_ticker"], trade["amount"], trade["price"], user_id, trade["amount"], trade["price"], trade["amount"], trade["amount"])
+            )
+
             # Update user cash after completing purchase
-            execute_query("UPDATE users SET cash = cash - ? WHERE id = ?", (trade["price"] * trade["amount"], user_id))
+            execute_query(
+                "UPDATE users SET cash = cash - ? WHERE id = ?", 
+                (trade["price"] * trade["amount"], user_id)
+            )
             
             # Remove trade from p2p_market
-            execute_query("DELETE FROM p2p_market WHERE p2p_id = ?", (trade_id,))
+            execute_query(
+                "DELETE FROM p2p_market WHERE p2p_id = ?", 
+                (trade_id,)
+            )
 
             flash("Bought!")
             return redirect("/p2p")
@@ -576,17 +662,12 @@ def propose():
     user_id = session["user_id"]
 
     # Get all the stock user owns and the amounts owned
-    stocks_owned = execute_query("""SELECT b.stock_bought AS stock_owned,
-                            SUM(b.amount_bought) - COALESCE(s.total_sold, 0) AS amount_owned
-                        FROM stock_buys b
-                        LEFT JOIN (
-                            SELECT stock_sold, SUM(amount_sold) AS total_sold, user_id
-                            FROM stock_sells
-                            GROUP BY stock_sold, user_id
-                        ) s ON b.stock_bought = s.stock_sold AND b.user_id = s.user_id
-                        WHERE b.user_id = ?
-                        GROUP BY b.stock_bought
-                        HAVING amount_owned > 0""", (user_id,))
+    stocks_owned = execute_query(
+        """SELECT stock_ticker AS stock_owned, amount AS amount_owned
+        FROM stock_ownership
+        WHERE user_id = ? AND amount > 0""",
+        (user_id,)
+    )
 
     # Do this if user accesses page with POST method
     if request.method == "POST":
@@ -604,6 +685,7 @@ def propose():
         # Check whether user provided a stock ticker
         if not user_stock:
             return apology("Must provide stock symbol", 400)
+        
         # Check whether user provided a positive number for amount
         try:
             if float(amount) <= 0:
@@ -617,8 +699,16 @@ def propose():
                 return apology("The price should be positive", 400)
         except ValueError:
             return apology("The price should be a valid number", 400)
-
+        
+        # Check whether comment is no longer than 200 characters
+        if len(comment) > 200:
+            return apology("Comment is too long", 400)
+        
         if type == "BUYING":
+            
+            # Check whether user has enough money to propose this trade
+            if float(price) * float(amount) > execute_query("SELECT cash FROM users WHERE id = ?", (user_id,))[0]["cash"]:
+                return apology("You don't have enough cash to propose this trade", 400)
 
             # Check whether stock exists in yfinance
             quote = lookup(user_stock)
@@ -626,8 +716,16 @@ def propose():
                 return apology("Stock doesn't exist", 400)
 
             # Insert trade into p2p_market table
-            execute_query("INSERT INTO p2p_market (time_posted, stock_ticker, price, amount, type, comment, user_id) VALUES (?, ?, ?, ?, ?, ?, ?)",
-                    (datetime.datetime.now(), user_stock, price, amount, type, comment, user_id))
+            execute_query(
+                "INSERT INTO p2p_market (time_posted, stock_ticker, price, amount, type, comment, user_id) VALUES (?, ?, ?, ?, ?, ?, ?)",
+                (datetime.datetime.now(), user_stock, price, amount, type, comment, user_id)
+            )
+
+            # Freeze cash for the trade
+            execute_query(
+                "UPDATE users SET frozen_cash = frozen_cash + ?, cash = cash - ? WHERE id = ?",
+                (float(price) * float(amount), float(price) * float(amount), user_id)
+            )
             
             # Tell user that trade was proposed, redirect to p2p
             flash("Trade proposed!")
@@ -651,8 +749,16 @@ def propose():
                 return apology("You don't have enough stocks to sell", 400)
 
             # Insert trade into p2p_market table
-            execute_query("INSERT INTO p2p_market (time_posted, stock_ticker, price, amount, type, comment, user_id) VALUES (?, ?, ?, ?, ?, ?, ?)",
-                    (datetime.datetime.now(), user_stock, price, amount, type, comment, user_id))
+            execute_query(
+                "INSERT INTO p2p_market (time_posted, stock_ticker, price, amount, type, comment, user_id) VALUES (?, ?, ?, ?, ?, ?, ?)",
+                (datetime.datetime.now(), user_stock, price, amount, type, comment, user_id)
+            )
+
+            # Freeze stocks for the trade
+            execute_query(
+                "UPDATE stock_ownership SET frozen_amount = frozen_amount + ?, amount = amount - ? WHERE user_id = ? AND stock_ticker = ?",
+                (amount, amount, user_id, user_stock)
+            )
 
             # Tell user that trade was proposed, redirect to p2p
             flash("Trade proposed!")
@@ -660,6 +766,194 @@ def propose():
 
     return render_template("propose.html", stocks_owned=stocks_owned)
 
+
+@app.route("/managep2p", methods=["GET", "POST"])
+@limiter.limit("60 per minute", methods=["POST"])
+@login_required
+def managep2p():
+    """Manages all the trade propositions made by user in p2p market"""
+
+    # user_id variable for later use
+    user_id = session["user_id"]
+
+    # Get all the trade propositions made by user
+    p2p_trades = execute_query("SELECT * FROM p2p_market WHERE user_id = ?", (user_id,))
+
+    # Convert to datetime object
+    p2p_trades = [dict(p2p_trade) for p2p_trade in p2p_trades]
+    for p2p_trade in p2p_trades:
+        p2p_trade["time_posted"] = datetime.datetime.strptime(p2p_trade["time_posted"], "%Y-%m-%d %H:%M:%S.%f")
+
+    if request.method == "POST":
+
+        # Get user inputs
+        trade_id = request.form.get("trade_id")
+        action = request.form.get("action")
+
+        # Check whether user provided a trade id
+        try:
+            if not int(trade_id):
+                return apology("Invalid request", 400)
+        except ValueError:
+            return apology("Invalid request", 400)
+        
+        # Check whether user provided an action
+        if not action:
+            return apology("Invalid request", 400)
+
+        # Get trade details
+        trade = execute_query("SELECT * FROM p2p_market WHERE p2p_id = ?", (trade_id,))
+        trade = trade[0]
+
+        # Do this if we want to remove a trade proposition
+        if action == "remove":
+
+            # Do this if trade is a buying trade
+            if trade["type"] == "BUYING":
+
+                # Remove frozen cash from user
+                execute_query(
+                    "UPDATE users SET frozen_cash = frozen_cash - ? WHERE id = ?", 
+                    (trade["price"] * trade["amount"], user_id)
+                )
+
+                # Remove trade from p2p_market
+                execute_query(
+                    "DELETE FROM p2p_market WHERE p2p_id = ?", 
+                    (trade_id,)
+                )
+
+                flash("Trade cancelled!")
+                return redirect("/managep2p")
+            
+            # Do this if trade is a selling trade
+            if trade["type"] == "SELLING":
+
+                # Remove frozen stocks from user
+                execute_query(
+                    "UPDATE stock_ownership SET frozen_amount = frozen_amount - ? WHERE user_id = ? AND stock_ticker = ?", 
+                    (trade["amount"], user_id, trade["stock_ticker"])
+                )
+
+                # Remove trade from p2p_market
+                execute_query(
+                    "DELETE FROM p2p_market WHERE p2p_id = ?", 
+                    (trade_id,)
+                )
+
+                flash("Trade cancelled!")
+                return redirect("/managep2p")
+
+        if action == "edit":
+
+            # Get user inputs from updated trade proposition
+            trade_id = request.form.get("trade_id")
+            new_amount = request.form.get("amount")
+            new_price = request.form.get("price")
+            new_comment = request.form.get("comment")
+            print(trade_id, new_amount, new_price, new_comment)
+
+            # Check whether user provided a positive number for amount 
+            try:
+                if float(new_amount) <= 0:
+                    return apology("The number of stocks should be positive", 400)
+            except ValueError:
+                return apology("The number of stocks should be a valid number", 400)
+            
+            # Check whether user provided a positive number for price
+            try:
+                if float(new_price) <= 0:
+                    return apology("The price should be positive", 400)
+            except ValueError:
+                return apology("The price should be a valid number", 400)
+            
+            # Check whether comment is no longer than 200 characters
+            if len(new_comment) > 200:
+                return apology("Comment is too long", 400)
+            
+            if trade["type"] == "BUYING":
+
+                # Get user's available cash and currently frozen cash
+                user = execute_query("SELECT cash, frozen_cash FROM users WHERE id = ?", (user_id,))[0]
+                
+                # Calculate the old frozen cash for this trade
+                old_frozen_cash = float(trade["price"]) * float(trade["amount"])
+                
+                # Calculate the new frozen cash
+                new_frozen_cash = float(new_price) * float(new_amount)
+                
+                # Calculate the effective available cash after unfreezing the old amount
+                effective_cash = user["cash"] + old_frozen_cash
+
+                # Check whether the user has enough cash for the new trade
+                if new_frozen_cash > effective_cash:
+                    return apology("You don't have enough cash to propose this trade", 400)
+
+                # Check whether stock exists in yfinance
+                quote = lookup(trade["stock_ticker"])
+                if quote['name'] == "Unknown": 
+                    return apology("Stock doesn't exist", 400)
+
+                # Update trade in p2p_market table
+                execute_query(
+                    "UPDATE p2p_market SET price = ?, amount = ?, comment = ? WHERE p2p_id = ?",
+                    (new_price, new_amount, new_comment, trade_id)
+                )
+
+                # Adjust frozen cash properly
+                execute_query(
+                    "UPDATE users SET frozen_cash = frozen_cash - ? + ?, cash = cash + ? - ? WHERE id = ?",
+                    (old_frozen_cash, new_frozen_cash, old_frozen_cash, new_frozen_cash, user_id)
+                )
+
+                flash("Trade updated!")
+                return redirect("/managep2p")
+            
+            if trade["type"] == "SELLING":
+
+                # Get user's stock ownership
+                stock = execute_query(
+                    "SELECT amount, frozen_amount FROM stock_ownership WHERE user_id = ? AND stock_ticker = ?",
+                    (user_id, trade["stock_ticker"])
+                )[0]
+
+                # Check if user owns the stock
+                if not stock:
+                    return apology("You don't own this stock", 400)
+                
+                # Old trade's frozen amount
+                old_frozen_amount = float(trade["amount"])  
+                # New trade's frozen amount
+                new_frozen_amount = float(new_amount)  
+
+                # Calculate effective available stock after unfreezing the old amount
+                effective_stock = stock["amount"] + old_frozen_amount
+
+                # Check whether the user has enough stock to propose this new trade
+                if new_frozen_amount > effective_stock:
+                    return apology("You don't have enough stock to propose this trade", 400)
+
+                # Check whether stock exists in yfinance
+                quote = lookup(trade["stock_ticker"])
+                if quote['name'] == "Unknown": 
+                    return apology("Stock doesn't exist", 400)
+
+                # Update trade in p2p_market table
+                execute_query(
+                    "UPDATE p2p_market SET price = ?, amount = ?, comment = ? WHERE p2p_id = ?",
+                    (new_price, new_amount, new_comment, trade_id)
+                )
+
+                # Adjust frozen stock properly
+                execute_query(
+                    "UPDATE stock_ownership SET frozen_amount = frozen_amount - ? + ? WHERE user_id = ? AND stock_ticker = ?",
+                    (old_frozen_amount, new_frozen_amount, user_id, trade["stock_ticker"])
+                )
+
+                flash("Trade updated!")
+                return redirect("/managep2p")     
+
+    return render_template("managep2p.html", p2p_trades=p2p_trades)
 
 if __name__ == "__main__":
     app.run(debug=True)
