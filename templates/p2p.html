@@ -1,24 +1,89 @@
 {% extends "layout.html" %}
 
-{% block title %}
-    P2P Market
-{% endblock %}
+{% block title %}P2P Market{% endblock %}
 
 {% block main %}
-    <h1>P2P Market</h1>
-    <div class="container" style="padding:30px">
-        <h4>Propose a trade to another user:</h4>
-        <table class="table table-striped table bordered mt-3">
-            <thead class="table-dark">
+    <h1 style="padding-bottom: 30px;">P2P Market</h1>
+    <a href="/propose" class="btn btn-primary">Propose a Trade</a>
+
+    <div class="container" style="padding:30px">        
+        <table class="table table-striped mt-3">
+            <thead>
                 <tr>
-                    <th>#</th>
-                    <th>Date and Time</th>
-                    <th>Bought or Sold</th>
-                    <th>Stock's symbol</th>
+                    <th>Time posted</th>
+                    <th>Proposed by</th>
+                    <th>Type</th>
+                    <th>Stock</th>
+                    <th>Quantity</th>
                     <th>Price</th>
-                    <th>No. of shares</th>
+                    <th>Total</th>
+                    <th>Comment</th>
+                    <th>Action</th>
                 </tr>
-            </thead>            
+            </thead>
+            <tbody>
+                {% for trade in p2p_trades %}
+                <tr>
+                    <td>{{ trade.time_posted.strftime('%Y-%m-%d %H:%M:%S') }}</td>
+                    <td>{{ trade.username }}</td>
+                    <td>{{ trade.type }}</td>
+                    <td>{{ trade.stock_ticker }}</td>
+                    <td>{{ trade.amount }}</td>
+                    <td>{{ trade.price }}</td>
+                    <td>{{ trade.amount * trade.price }}</td>
+                    <td>{{ trade.comment }}</td>
+                    <td>
+                        {% if trade.type == "SELLING" %}
+                            <button class="btn btn-success btn-sm" 
+                                onclick="confirmTrade('{{ trade.p2p_id }}', 'BUY', '{{ trade.stock_ticker }}', '{{ trade.amount }}', '{{ trade.price }}', '{{ trade.username }}')">
+                                Buy
+                            </button>
+                        {% endif %}
+                        {% if trade.type == "BUYING" %}
+                            <button class="btn btn-success btn-sm" 
+                                onclick="confirmTrade('{{ trade.p2p_id }}', 'SELL', '{{ trade.stock_ticker }}', '{{ trade.amount }}', '{{ trade.price }}', '{{ trade.username }}')">
+                                Sell
+                            </button>
+                        {% endif %}
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
         </table>
+    </div>    
+
+    <!-- Confirmation Modal -->
+    <div class="modal fade" id="tradeConfirmModal" tabindex="-1" aria-labelledby="tradeConfirmModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="tradeConfirmModalLabel">Confirm Trade</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <p id="tradeConfirmText"></p>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <form id="tradeConfirmForm" action="/p2p" method="POST">
+                        <input type="hidden" id="trade_id" name="trade_id" value="">
+                        <button type="submit" class="btn btn-success">Confirm</button>
+                    </form>
+                </div>
+            </div>
+        </div>
     </div>
+
+    <script>
+        function confirmTrade(tradeId, action, stock, amount, price, proposer) {
+            let total = amount * price;
+            let message = `Are you sure you want to <strong>${action.toLowerCase()}</strong> <strong>${amount} shares</strong> of <strong>${stock}</strong> at <strong>$${price} per share</strong> (Total: <strong>$${total}</strong>) from <strong>${proposer}</strong>?`;
+
+            document.getElementById("tradeConfirmText").innerHTML = message;
+            document.getElementById("trade_id").value = tradeId;
+
+            let modal = new bootstrap.Modal(document.getElementById('tradeConfirmModal'));
+            modal.show();
+        }
+    </script>
 {% endblock %}

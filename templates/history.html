@@ -13,9 +13,10 @@
                     <th>#</th>
                     <th>Date and Time</th>
                     <th>Bought or Sold</th>
+                    <th>MARKET or P2P</th>
                     <th>Stock's symbol</th>
                     <th>Price</th>
-                    <th>No. of shares</th>
+                    <th>No. of shares</th>                    
                 </tr>
             </thead>
             <tbody>
@@ -24,6 +25,7 @@
                     <td>{{ loop.index }}</td>
                     <td>{{ transaction.time.strftime('%Y-%m-%d %H:%M:%S') }}</td>
                     <td>{{ transaction.transaction_type }}</td>
+                    <td>{{ transaction.type }}</td>
                     <td>{{ transaction.ticker }}</td>
                     <td>{{ transaction.price | usd }}</td>
                     <td>{{ transaction.amount }}</td>

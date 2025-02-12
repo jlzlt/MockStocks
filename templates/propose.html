@@ -1,0 +1,109 @@
+{% extends "layout.html" %}
+
+{% block title %}Propose a Trade{% endblock %}
+
+{% block main %}
+    <h1>Propose a Trade</h1>
+
+    <!-- Trade Proposal Form -->
+    <form id="trade-form" action="/propose" method="POST" style="padding-top:30px;">
+        <!-- Row for Trade Type, Stock Ticker, Quantity, and Proposed Price -->
+        <div class="row justify-content-center mb-3">
+            <div class="col-md-3">
+                <select class="form-control" id="type" name="type" onchange="toggleStockField()" required>
+                    <option value="" disabled selected>Choose Type</option>
+                    <option value="BUYING">Buying</option>
+                    <option value="SELLING">Selling</option>
+                </select>
+            </div>
+
+            <div class="col-md-3">
+                <select class="form-control d-none" id="stockDropdown" name="symbol">
+                    <option value="" disabled selected>Choose stock</option>
+                    {% for stock in stocks_owned %}
+                        <option value="{{ stock.stock_owned }}">{{ stock.stock_owned }}</option>
+                    {% endfor %}
+                </select>
+                <input autocomplete="off" class="form-control" id="stockTicker" name="symbol" placeholder="Stock Ticker" type="text">
+            </div>
+
+            <div class="col-md-3">
+                <input autocomplete="off" class="form-control" id="shares" name="shares" placeholder="Enter quantity" type="number" min="1" required>
+            </div>
+
+            <div class="col-md-3">
+                <input autocomplete="off" class="form-control" id="price" name="price" placeholder="Proposed Price" type="number" min="0" step="0.01" required>
+            </div>
+        </div>
+
+        <!-- Row for Comment -->
+        <div class="row justify-content-center mb-3">
+            <div class="col-md-12">
+                <textarea class="form-control w-100" id="comment" name="comment" rows="3" maxlength="200" placeholder="Leave a comment (optional)"></textarea>
+                <small id="charCounter" class="text-muted">200 characters remaining</small>
+            </div>
+        </div>
+
+        <!-- Submit Button -->
+        <button class="btn btn-primary confirm-btn" type="button" data-bs-toggle="modal" data-bs-target="#confirmModal">
+            Submit Trade Proposal
+        </button>
+    </form>   
+
+    <!-- 🔄 Single Reusable Confirmation Modal -->
+    <div class="modal fade" id="confirmModal" tabindex="-1">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Confirm Trade Proposal</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    Are you sure you want to submit this trade proposal?
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="button" class="btn btn-primary" id="confirm-action-btn">Confirm</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Toggle stock input field based on trade type
+        function toggleStockField() {
+            let tradeType = document.getElementById("type").value;
+            let stockDropdown = document.getElementById("stockDropdown");
+            let stockInput = document.getElementById("stockTicker");
+
+            if (tradeType === "SELLING") {
+                stockInput.classList.add("d-none");
+                stockDropdown.classList.remove("d-none");
+                stockInput.value = "";
+            } else {
+                stockDropdown.classList.add("d-none");
+                stockInput.classList.remove("d-none");
+                stockDropdown.value = "";
+            }
+        }
+
+        // Confirmation modal logic
+        document.addEventListener("DOMContentLoaded", function () {
+            let formToSubmit = document.getElementById("trade-form");
+
+            document.getElementById("confirm-action-btn").addEventListener("click", function () {
+                formToSubmit.submit();
+            });
+
+            // Character countdown for comment field
+            let commentField = document.getElementById("comment");
+            let charCounter = document.getElementById("charCounter");
+
+            commentField.addEventListener("input", function () {
+                let remaining = 200 - commentField.value.length;
+                charCounter.textContent = remaining + " characters remaining";
+            });
+        });
+    </script>
+
+{% endblock %}

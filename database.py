@@ -57,6 +57,8 @@ def initialize_database():
             stock_bought TEXT NOT NULL,
             price_bought REAL NOT NULL,
             amount_bought NUMERIC NOT NULL,
+            type TEXT NOT NULL,
+            p2p_counterpartyid INTEGER,
             user_id INTEGER NOT NULL,
             FOREIGN KEY (user_id) REFERENCES users(id)
         );
@@ -67,6 +69,20 @@ def initialize_database():
             stock_sold TEXT NOT NULL,
             price_sold REAL NOT NULL,
             amount_sold NUMERIC NOT NULL,
+            type TEXT NOT NULL,
+            p2p_counterpartyid INTEGER,
+            user_id INTEGER NOT NULL,
+            FOREIGN KEY (user_id) REFERENCES users(id)
+        );
+                         
+        CREATE TABLE IF NOT EXISTS p2p_market (
+            p2p_id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+            time_posted DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            stock_ticker TEXT NOT NULL,
+            amount NUMERIC NOT NULL,
+            price REAL NOT NULL,
+            type TEXT NOT NULL,
+            comment TEXT,
             user_id INTEGER NOT NULL,
             FOREIGN KEY (user_id) REFERENCES users(id)
         );
