@@ -57,7 +57,7 @@
                     <tr>
                         <td>{{ stock.stock_owned }}</td>
                         <td>
-                            {{ stock.amount_owned + stock.frozen_amount }}
+                            {{ (stock.amount_owned + stock.frozen_amount) | round(2) }}
                             {% if stock.frozen_amount > 0 %}
                                 <span style="cursor: help;" title="Includes {{ stock.frozen_amount }} frozen stocks due to P2P trade proposals.">*</span>
                             {% endif %}

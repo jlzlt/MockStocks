@@ -47,6 +47,7 @@
         function updateAvailableShares() {
             let selectedStock = document.getElementById("symbol");
             let availableShares = selectedStock.options[selectedStock.selectedIndex].getAttribute("data-available") || 0;
+            availableShares = parseFloat(availableShares).toFixed(2);
             document.getElementById("availableSharesText").innerText = `Available shares: ${availableShares}`;
         }
 

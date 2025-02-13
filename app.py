@@ -114,7 +114,7 @@ def index():
 
 
 @app.route("/login", methods=["GET", "POST"])
-@limiter.limit("10 per minute", methods=["POST"])
+@limiter.limit("60 per minute", methods=["POST"])
 def login():
     """Log user in"""
 
@@ -123,21 +123,32 @@ def login():
 
     # User reached route via POST (as by submitting a form via POST)
     if request.method == "POST":
+        # Get inputs from user
+        username = request.form.get("username")
+        password = request.form.get("password")
+
         # Ensure username was submitted
-        if not request.form.get("username"):
+        if not username:
             return apology("must provide username", 400)
 
         # Ensure password was submitted
-        elif not request.form.get("password"):
+        elif not password:
             return apology("must provide password", 400)
+        
+        # Ensure username is not too long
+        if len(username) > 25:
+            return apology("username too long", 400)        
+
+        # Ensure password is not too long
+        if len(password) > 1000:
+            return apology("password too long", 400)
 
         # Query database for username
-        username = request.form.get("username")
         rows = execute_query("SELECT * FROM users WHERE username = ?", (username,))
 
         # Ensure username exists and password is correct
         if len(rows) != 1 or not check_password_hash(
-            rows[0]["hash"], request.form.get("password")
+            rows[0]["hash"], password
         ):
             return apology("invalid username and/or password", 400)
 
@@ -147,9 +158,7 @@ def login():
         # Redirect user to home page
         return redirect("/")
 
-    # User reached route via GET (as by clicking a link or via redirect)
-    else:
-        return render_template("login.html")
+    return render_template("login.html")
 
 
 @app.route("/logout")
@@ -164,7 +173,7 @@ def logout():
 
 
 @app.route("/register", methods=["GET", "POST"])
-@limiter.limit("10 per minute", methods=["POST"])
+@limiter.limit("60 per minute", methods=["POST"])
 def register():
     """Register user"""
 
@@ -175,21 +184,28 @@ def register():
         password = request.form.get("password")
         confirmation = request.form.get("confirmation")
 
+        # Check whether user provided username
+        if not username:
+            return apology("must provide username", 400)        
+
         # Look for username in database
         rows = execute_query("SELECT * FROM users WHERE username = ?", (username,))
 
-        # Check whether user provided username
-        if not username:
-            return apology("must provide username", 400)
         # Check whether username already exists in database
-        elif len(rows) != 0:
+        if len(rows) != 0:
             return apology("username already exists", 400)
         # Check whether username is too long
         elif len(username) > 25:
             return apology("username too long", 400)
         # Check whether password is provided
-        if not password:
+        elif not password:
             return apology("must enter password", 400)
+        # Check whether password is not too long
+        elif len(password) > 1000:
+            return apology("password too long", 400)
+        # Check whether password is not too short
+        elif len(password) < 5:
+            return apology("password too short", 400)
         # Check whether password confirmation is provided
         elif not confirmation:
             return apology("must re-enter password", 400)
@@ -210,9 +226,7 @@ def register():
         flash("Thanks for registering! Now you are logged in.")
         return redirect("/")
 
-    # If user arrives to page with GET method
-    else:
-        return render_template("register.html")
+    return render_template("register.html")
 
 
 @app.route("/quote", methods=["GET", "POST"])
@@ -234,7 +248,7 @@ def quote():
         stock = lookup(quote)
 
         # Check whether stock is found        
-        if stock["name"] == "Unknown":
+        if not stock or "name" not in stock or stock["name"] == "Unknown":
             return apology("no such stock found", 400)
 
         # Variables from stock quote
@@ -248,13 +262,11 @@ def quote():
         # If quote is available we render info
         return render_template("quoted.html", name=name, price=price, symbol=symbol, chart=chart)
 
-    else:
-        # If method is GET we render quote page
-        return render_template("quote.html")
+    return render_template("quote.html")
 
 
 @app.route("/buy", methods=["GET", "POST"])
-@limiter.limit("100 per minute", methods=["POST"])
+@limiter.limit("240 per minute", methods=["POST"])
 @login_required
 def buy():
     """Buy shares of stock"""
@@ -272,7 +284,7 @@ def buy():
         if not symbol:
             return apology("Must provide stock symbol", 400)
         # Check whether stock provided exists
-        elif quote['name'] == "Unknown":
+        elif not quote or "name" not in quote or quote['name'] == "Unknown":
             return apology("No such stock found", 400)
 
         # Get shares input and check whether it is valid number
@@ -282,8 +294,8 @@ def buy():
             return apology("Number of shares have to be a valid number", 400)
 
         # Check whether user provided a positive number of shares
-        if float(shares) <= 0:
-            return apology("the number of shares must be more than 0", 400)
+        if float(shares) < 0:
+            return apology("the number of shares must be positive", 400)
 
         # Get how much cash user has
         usercash = execute_query("SELECT cash FROM users WHERE id=?", (user_id,))
@@ -310,7 +322,7 @@ def buy():
         )
 
         # Update user cash after completing purchase
-        execute_query("UPDATE users SET cash = ? WHERE id = ?", (usercash[0]["cash"] - shares * quote["price"], user_id))
+        execute_query("UPDATE users SET cash = cash - ? WHERE id = ?", (shares * quote["price"], user_id))
 
         # When transaction is successful redirect to index and flash message
         flash("Bought!")
@@ -320,7 +332,7 @@ def buy():
 
 
 @app.route("/sell", methods=["GET", "POST"])
-@limiter.limit("100 per minute", methods=["POST"])
+@limiter.limit("240 per minute", methods=["POST"])
 @login_required
 def sell():
     """Sell shares of stock"""
@@ -358,8 +370,11 @@ def sell():
             return apology("User doesn't own this stock", 400)
 
         # Check whether user provided a positive number for amount
-        if float(stock_amount) <= 0:
-            return apology("The number of stocks to sell should be positive", 400)
+        try:
+            if float(stock_amount) < 0:
+                return apology("The number of stocks to sell should be positive", 400)
+        except ValueError:
+            return apology("The number of stocks to sell should be a valid number", 400)
 
         # Check whether user owns this many stocks
         if float(stock_amount) > amount_owned:
@@ -369,7 +384,7 @@ def sell():
         quote = lookup(user_stock)
         
         # Stock not found
-        if quote is None:
+        if not quote or "name" not in quote or quote['name'] == "Unknown":
             return apology("Stock quote not found", 400)
 
         # Insert stock sell into database
@@ -434,7 +449,7 @@ def history():
 
 
 @app.route("/profile", methods=["GET", "POST"])
-@limiter.limit("10 per minute", methods=["POST"])
+@limiter.limit("60 per minute", methods=["POST"])
 @login_required
 def profile():
     """Change profile settings"""
@@ -873,7 +888,7 @@ def managep2p():
             new_amount = request.form.get("amount")
             new_price = request.form.get("price")
             new_comment = request.form.get("comment")
-            print(trade_id, new_amount, new_price, new_comment)
+            print(request.form)
 
             # Check whether user provided a positive number for amount 
             try:
