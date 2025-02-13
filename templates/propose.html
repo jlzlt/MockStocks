@@ -28,11 +28,11 @@
             </div>
 
             <div class="col-md-3">
-                <input autocomplete="off" class="form-control" id="shares" name="shares" placeholder="Enter quantity" type="number" min="1" required>
+                <input autocomplete="off" class="form-control" id="shares" name="shares" placeholder="Enter quantity" type="number" min="1" required oninput="updateTotal()">
             </div>
 
             <div class="col-md-3">
-                <input autocomplete="off" class="form-control" id="price" name="price" placeholder="Proposed Price" type="number" min="0" step="0.01" required>
+                <input autocomplete="off" class="form-control" id="price" name="price" placeholder="Proposed Price per Share" type="number" min="0" step="0.01" required oninput="updateTotal()">
             </div>
         </div>
 
@@ -45,12 +45,12 @@
         </div>
 
         <!-- Submit Button -->
-        <button class="btn btn-primary confirm-btn" type="button" data-bs-toggle="modal" data-bs-target="#confirmModal">
+        <button class="btn btn-primary confirm-btn" type="button" data-bs-toggle="modal" data-bs-target="#confirmModal" onclick="prepareConfirmation()">
             Submit Trade Proposal
         </button>
     </form>   
 
-    <!-- 🔄 Single Reusable Confirmation Modal -->
+    <!-- 🔄 Confirmation Modal -->
     <div class="modal fade" id="confirmModal" tabindex="-1">
         <div class="modal-dialog modal-dialog-centered">
             <div class="modal-content">
@@ -59,7 +59,7 @@
                     <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
                 </div>
                 <div class="modal-body">
-                    Are you sure you want to submit this trade proposal?
+                    <p id="tradeDetails"></p>
                 </div>
                 <div class="modal-footer">
                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
@@ -70,7 +70,6 @@
     </div>
 
     <script>
-        // Toggle stock input field based on trade type
         function toggleStockField() {
             let tradeType = document.getElementById("type").value;
             let stockDropdown = document.getElementById("stockDropdown");
@@ -87,12 +86,41 @@
             }
         }
 
-        // Confirmation modal logic
-        document.addEventListener("DOMContentLoaded", function () {
-            let formToSubmit = document.getElementById("trade-form");
+        function updateTotal() {
+            let shares = parseFloat(document.getElementById("shares").value) || 0;
+            let price = parseFloat(document.getElementById("price").value) || 0;
+            let total = (shares * price).toFixed(2);
+            return total;
+        }
 
+        function prepareConfirmation() {
+            let tradeType = document.getElementById("type").value;
+            let stock = tradeType === "SELLING" ? document.getElementById("stockDropdown").value : document.getElementById("stockTicker").value.toUpperCase();
+            let shares = document.getElementById("shares").value;
+            let price = parseFloat(document.getElementById("price").value).toFixed(2);
+            let total = updateTotal();
+            let comment = document.getElementById("comment").value;
+
+            if (!tradeType || !stock || shares <= 0 || price <= 0) {
+                alert("Please fill in all required fields correctly.");
+                return;
+            }
+
+            let details = `
+                <strong>Type:</strong> ${tradeType}<br>
+                <strong>Stock:</strong> ${stock}<br>
+                <strong>Quantity:</strong> ${shares}<br>
+                <strong>Price per Share:</strong> $${price}<br>
+                <strong>Total Cost:</strong> $${total}<br>
+                ${comment ? `<strong>Comment:</strong> ${comment}` : ""}
+            `;
+
+            document.getElementById("tradeDetails").innerHTML = details;
+        }
+
+        document.addEventListener("DOMContentLoaded", function () {
             document.getElementById("confirm-action-btn").addEventListener("click", function () {
-                formToSubmit.submit();
+                document.getElementById("trade-form").submit();
             });
 
             // Character countdown for comment field

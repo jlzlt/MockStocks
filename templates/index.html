@@ -6,46 +6,108 @@
 
 {% block main %}
     <h1>Your Portfolio</h1>
+
+    <!-- Portfolio Summary at the Top -->
     <div class="container" style="padding:30px">
-        <table class="table table-dark table-striped table bordered mt-3">
+        <table class="table table-dark table-striped mt-3">
             <thead class="table-dark">
                 <tr>
-                    <th>Symbol</th>
-                    <th>Shares</th>
-                    <th>Average purchase price</th>
-                    <th>Curent price</th>
-                    <th>Total</th>
+                    <th>Total Portfolio Value</th>
+                    <th>Cash</th>
+                    {% if cash[0]["frozen_cash"] > 0 %}
+                        <th>Frozen Cash <span style="cursor: help;" title="Frozen cash due to P2P trade proposals.">*</span></th>                        
+                    {% endif %}
+                    {% if stocks %}
+                        <th>Total Stocks Value</th>
+                    {% endif %}
                 </tr>
             </thead>
             <tbody>
-                {% for stock in stocks %}
                 <tr>
-                    <td>{{ stock.stock_owned }}</td>
-                    <td>{{ stock.amount_owned }}</td>
-                    <td>{{ stock.avg_price | usd }}</td>
-                    <td>{{ current_prices[stock.stock_owned] | usd }}</td>
-                    <td>{{ (stock.amount_owned * current_prices[stock.stock_owned]) | usd }}</td>
-                </tr>
-                {% endfor %}
-            </tbody>
-            <tfoot>
-                <tr>
-                    <td colspan="3"></td>
-                    <td><strong>Cash</strong></td>
+                    <td><strong>{{ (sum_total + cash[0]["cash"] + cash[0]["frozen_cash"]) | usd }}</strong></td>
                     <td>{{ cash[0]["cash"] | usd }}</td>
+                    {% if cash[0]["frozen_cash"] > 0 %}
+                        <td>{{ cash[0]["frozen_cash"] | usd }}</td>
+                    {% endif %}
+                    {% if stocks %}
+                        <td>{{ sum_total | usd }}</td>
+                    {% endif %}
                 </tr>
-                {% if cash[0]["frozen_cash"] > 0 %}
-                <tr>
-                    <td colspan="3"></td>
-                    <td><strong>Frozen Cash</strong></td>
-                    <td>{{ cash[0]["frozen_cash"] | usd }}</td>
-                {% endif %}
-                <tr>
-                    <td colspan="3"></td>
-                    <td><strong>TOTAL (Cash + Stocks)</strong></td>
-                    <td>{{ (sum_total + cash[0]["cash"] + cash[0]["frozen_cash"]) | usd }}</td>
-                </tr>
-            </tfoot>
-        </table>        
+            </tbody>
+        </table>
     </div>
+
+     {% if stocks %}
+        <!-- Stocks Table -->
+        <div class="container" style="padding:30px">
+            <table class="table table-dark table-striped mt-3">
+                <thead class="table-dark">
+                    <tr>
+                        <th>Symbol</th>
+                        <th>Shares</th>
+                        <th>Average Purchase Price</th>
+                        <th>Total Purchase Value</th>
+                        <th>Current Price</th>
+                        <th>Total Current Value</th>
+                        <th>Profit/Loss</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for stock in stocks %}
+                    <tr>
+                        <td>{{ stock.stock_owned }}</td>
+                        <td>
+                            {{ stock.amount_owned + stock.frozen_amount }}
+                            {% if stock.frozen_amount > 0 %}
+                                <span style="cursor: help;" title="Includes {{ stock.frozen_amount }} frozen stocks due to P2P trade proposals.">*</span>
+                            {% endif %}
+                        </td>
+                        <td>{{ stock.avg_price | usd }}</td>
+                        <td>{{ (stock.avg_price * (stock.amount_owned + stock.frozen_amount)) | usd }}</td>
+                        <td>{{ current_prices[stock.stock_owned] | usd }}</td>
+                        <td>{{ (current_prices[stock.stock_owned] * (stock.amount_owned + stock.frozen_amount)) | usd }}</td>
+                        <td>
+                            {% if current_prices[stock.stock_owned] > stock.avg_price %}
+                                <span style="color:green; font-weight:bold">
+                                    {{ ((current_prices[stock.stock_owned] - stock.avg_price) * (stock.amount_owned + stock.frozen_amount)) | usd }}
+                                    ({{ (((current_prices[stock.stock_owned] - stock.avg_price) * 100) / stock.avg_price) | round(2) }}%)
+                                </span>
+                            {% elif current_prices[stock.stock_owned] < stock.avg_price %}
+                                <span style="color:red; font-weight:bold">
+                                    {{ ((current_prices[stock.stock_owned] - stock.avg_price) * (stock.amount_owned + stock.frozen_amount)) | usd }}
+                                    ({{ (((current_prices[stock.stock_owned] - stock.avg_price) * 100) / stock.avg_price) | round(2) }}%)
+                                </span>
+                            {% else %}
+                                <span>{{ ((current_prices[stock.stock_owned] - stock.avg_price) * (stock.amount_owned + stock.frozen_amount)) | usd }}</span>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+                <tfoot>
+                    <tr style="font-weight:bold;">
+                        <td colspan="3" style="text-align:right;">TOTAL:</td>
+                        <td>{{ total_purchase_value | usd }}</td>
+                        <td></td>
+                        <td>{{ total_current_value | usd }}</td>
+                        <td>
+                            {% if total_profit_loss > 0 %}
+                                <span style="color:green;">
+                                    {{ total_profit_loss | usd }}
+                                    ({{ ((total_profit_loss * 100) / total_purchase_value) | round(2) }}%)
+                                </span>
+                            {% elif total_profit_loss < 0 %}
+                                <span style="color:red;">
+                                    {{ total_profit_loss | usd }}
+                                    ({{ ((total_profit_loss * 100) / total_purchase_value) | round(2) }}%)
+                                </span>
+                            {% else %}
+                                <span>{{ total_profit_loss | usd }}</span>
+                            {% endif %}
+                        </td>
+                    </tr>
+                </tfoot>                
+            </table>
+        </div>
+    {% endif %}    
 {% endblock %}

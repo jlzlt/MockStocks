@@ -1,18 +1,86 @@
 {% extends "layout.html" %}
 
 {% block title %}
-    Quote
+    Buy
 {% endblock %}
 
 {% block main %}
     <h1>Buy</h1>
-    <form action="/buy" method="post" style="padding:30px">
+    <form id="buyForm" action="/buy" method="post" style="padding:30px" onsubmit="return showBuyConfirmModal(event);">
         <div class="mb-3">
-            <input autocomplete="off" autofocus class="form-control mx-auto w-auto" name="symbol" placeholder="Enter stock symbol" type="text">
+            <input autocomplete="off" autofocus class="form-control mx-auto w-auto" id="symbol" name="symbol" placeholder="Enter stock symbol" type="text">
         </div>
         <div class="mb-3">
-            <input autocomplete="off" autofocus class="form-control mx-auto w-auto" name="shares" placeholder="Enter number of shares to buy" type="number" step="0.01" min="0">
+            <input autocomplete="off" class="form-control mx-auto w-auto" id="shares" name="shares" placeholder="Enter number of shares to buy" type="number" step="0.01" min="0">
         </div>
-        <button class="btn btn-primary" type="submit">Submit</button>
+        <button class="btn btn-primary" type="button" onclick="showBuyConfirmModal(event)">Submit</button>
     </form>
+
+    <!-- Confirmation Modal -->
+    <div class="modal fade" id="buyConfirmModal" tabindex="-1" aria-labelledby="buyConfirmModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="buyConfirmModalLabel">Confirm Purchase</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <p id="buyConfirmText"></p>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="button" class="btn btn-success" onclick="submitBuyForm()">Confirm</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        async function getStockPrice(symbol) {
+                try {
+                    let response = await fetch(`/quote_json?symbol=${symbol}`);
+                    let data = await response.json();
+
+                    if (data.error) {
+                        throw new Error(data.error);
+                    }
+
+                    return data.price;
+                } catch (error) {
+                    console.error("Error fetching stock price:", error);
+                    return null;
+                }
+            }
+
+        async function showBuyConfirmModal(event) {
+            event.preventDefault();
+
+            let stockSymbol = document.getElementById("symbol").value.trim().toUpperCase();
+            let shares = document.getElementById("shares").value.trim();
+
+            if (!stockSymbol || !shares || parseFloat(shares) <= 0) {
+                alert("Please enter a valid stock symbol and number of shares.");
+                return false;
+            }
+
+            let price = await getStockPrice(stockSymbol);
+            if (!price) {
+                alert("Failed to fetch stock price. Please try again.");
+                return false;
+            }
+
+            let total = (parseFloat(shares) * price).toFixed(2);
+            let message = `Are you sure you want to <strong>buy ${shares} shares</strong> of <strong>${stockSymbol}</strong> at <strong>$${price.toFixed(2)} per share</strong>?<br><br>
+                           Total cost: <strong>$${total}</strong>`;
+
+            document.getElementById("buyConfirmText").innerHTML = message;
+
+            let modal = new bootstrap.Modal(document.getElementById('buyConfirmModal'));
+            modal.show();
+        }
+
+        function submitBuyForm() {
+            document.getElementById("buyForm").submit();
+        }
+    </script>
 {% endblock %}

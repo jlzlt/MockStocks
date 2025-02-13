@@ -86,7 +86,7 @@ def index():
 
     # Get stock tickers, average price and the amount of stocks owned by this user
     stocks = execute_query(
-        """SELECT avg_price, stock_ticker AS stock_owned, amount AS amount_owned
+        """SELECT frozen_amount, avg_price, stock_ticker AS stock_owned, amount AS amount_owned
         FROM stock_ownership
         WHERE user_id = ? AND amount > 0""",
         (user_id,)
@@ -102,9 +102,15 @@ def index():
     cash = execute_query("SELECT cash, frozen_cash FROM users WHERE id = ?", (user_id,))
 
     # Calculate how much currently owned stocks by user are worth in current prices
-    sum_total = sum(stock["amount_owned"] * current_prices[stock["stock_owned"]] for stock in stocks)
+    sum_total = sum((stock["amount_owned"] + stock["frozen_amount"]) * current_prices[stock["stock_owned"]] for stock in stocks)
+
+    # Calculate total purchase value, current value and profit/loss
+    total_purchase_value = sum(stock["avg_price"] * (stock["amount_owned"] + stock["frozen_amount"]) for stock in stocks)
+    total_current_value = sum(current_prices[stock["stock_owned"]] * (stock["amount_owned"] + stock["frozen_amount"]) for stock in stocks)
+    total_profit_loss = total_current_value - total_purchase_value
   
-    return render_template("index.html", stocks=stocks, current_prices=current_prices, cash=cash, sum_total=sum_total)
+    return render_template("index.html", stocks=stocks, current_prices=current_prices, cash=cash, sum_total=sum_total, 
+                           total_profit_loss=total_profit_loss, total_current_value=total_current_value, total_purchase_value=total_purchase_value)
 
 
 @app.route("/login", methods=["GET", "POST"])
@@ -361,6 +367,10 @@ def sell():
 
         # Get stock quote from yfinance
         quote = lookup(user_stock)
+        
+        # Stock not found
+        if quote is None:
+            return apology("Stock quote not found", 400)
 
         # Insert stock sell into database
         execute_query("INSERT INTO stock_sells (time_sold, stock_sold, price_sold, amount_sold, type, user_id) VALUES (?, ?, ?, ?, ?, ?)",
@@ -817,6 +827,12 @@ def managep2p():
                     (trade["price"] * trade["amount"], user_id)
                 )
 
+                # Add cash back to user
+                execute_query(
+                    "UPDATE users SET cash = cash + ? WHERE id = ?", 
+                    (trade["price"] * trade["amount"], user_id)
+                )
+
                 # Remove trade from p2p_market
                 execute_query(
                     "DELETE FROM p2p_market WHERE p2p_id = ?", 
@@ -832,6 +848,12 @@ def managep2p():
                 # Remove frozen stocks from user
                 execute_query(
                     "UPDATE stock_ownership SET frozen_amount = frozen_amount - ? WHERE user_id = ? AND stock_ticker = ?", 
+                    (trade["amount"], user_id, trade["stock_ticker"])
+                )
+
+                # Add stocks back to user
+                execute_query(
+                    "UPDATE stock_ownership SET amount = amount + ? WHERE user_id = ? AND stock_ticker = ?", 
                     (trade["amount"], user_id, trade["stock_ticker"])
                 )
 
@@ -954,6 +976,24 @@ def managep2p():
                 return redirect("/managep2p")     
 
     return render_template("managep2p.html", p2p_trades=p2p_trades)
+
+
+@app.route("/quote_json", methods=["GET"])
+@login_required
+def quote_json():
+    """Return stock price as JSON"""
+    symbol = request.args.get("symbol", "").upper()
+    
+    if not symbol:
+        return jsonify({"error": "Missing stock symbol"}), 400
+
+    stock = lookup(symbol)
+
+    if not stock or stock["name"] == "Unknown":
+        return jsonify({"error": "Stock not found"}), 404
+
+    return jsonify({"price": stock["price"]})
+
 
 if __name__ == "__main__":
     app.run(debug=True)
