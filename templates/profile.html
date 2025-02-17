@@ -44,7 +44,7 @@
         </table>
     </div>
 
-    <!-- 🔄 Single Reusable Confirmation Modal -->
+    <!-- Confirmation Modal -->
     <div class="modal fade" id="confirmModal" tabindex="-1">
         <div class="modal-dialog modal-dialog-centered">
             <div class="modal-content">
@@ -64,23 +64,35 @@
     </div>
 
     <script>
-    document.addEventListener("DOMContentLoaded", function () {
-        let formToSubmit = null;
+        document.addEventListener("DOMContentLoaded", function () {
+            let formToSubmit = null;
 
-        // Bind confirmation buttons dynamically
-        document.querySelectorAll(".confirm-btn").forEach(button => {
-            button.addEventListener("click", function () {
-                formToSubmit = document.getElementById(this.dataset.form);
+            // Bind confirmation buttons dynamically
+            document.querySelectorAll(".confirm-btn").forEach(button => {
+                button.addEventListener("click", function () {
+                    formToSubmit = document.getElementById(this.dataset.form);
+                });
+            });
+
+            // Handle Enter key inside input fields
+            document.querySelectorAll("form input").forEach(input => {
+                input.addEventListener("keypress", function (event) {
+                    if (event.key === "Enter") {
+                        event.preventDefault(); // Prevent default form submission
+                        formToSubmit = this.closest("form"); // Store the form
+                        let modal = new bootstrap.Modal(document.getElementById("confirmModal")); 
+                        modal.show(); // Show the confirmation modal
+                    }
+                });
+            });
+
+            // Submit the selected form when confirming
+            document.getElementById("confirm-action-btn").addEventListener("click", function () {
+                if (formToSubmit) {
+                    formToSubmit.submit();
+                }
             });
         });
-
-        // Submit the selected form when confirming
-        document.getElementById("confirm-action-btn").addEventListener("click", function () {
-            if (formToSubmit) {
-                formToSubmit.submit();
-            }
-        });
-    });
     </script>
 
 {% endblock %}

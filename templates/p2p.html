@@ -30,17 +30,17 @@
                     <td>{{ trade.type }}</td>
                     <td>{{ trade.stock_ticker }}</td>
                     <td>{{ trade.amount }}</td>
-                    <td>{{ trade.price }}</td>
-                    <td>{{ trade.amount * trade.price }}</td>
+                    <td>{{ trade.price | usd }}</td>
+                    <td>{{ (trade.amount * trade.price) | usd }}</td>
                     <td>{{ trade.comment }}</td>
                     <td>
-                        {% if trade.type == "SELLING" %}
+                        {% if trade.type == "SELLING" and trade.user_id != user_id  %}
                             <button class="btn btn-success btn-sm" 
                                 onclick="confirmTrade('{{ trade.p2p_id }}', 'BUY', '{{ trade.stock_ticker }}', '{{ trade.amount }}', '{{ trade.price }}', '{{ trade.username }}')">
                                 Buy
                             </button>
                         {% endif %}
-                        {% if trade.type == "BUYING" %}
+                        {% if trade.type == "BUYING" and trade.user_id != user_id %}
                             <button class="btn btn-success btn-sm" 
                                 onclick="confirmTrade('{{ trade.p2p_id }}', 'SELL', '{{ trade.stock_ticker }}', '{{ trade.amount }}', '{{ trade.price }}', '{{ trade.username }}')">
                                 Sell

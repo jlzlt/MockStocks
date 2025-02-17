@@ -3,9 +3,9 @@
 {% block title %}Manage Your Trade Propositions{% endblock %}
 
 {% block main %}
-    <h1 style="padding-bottom: 30px;">Manage Your Trade Propositions</h1>
-
-    <div class="container" style="padding:30px">        
+        <a href="/p2p" class="btn btn-secondary">← Back</a>
+        <h1 style="padding: 30px; margin: 0 auto;">Manage Your Trade Propositions</h1>
+    <div class="container">        
         <table class="table table-striped mt-3">
             <thead>
                 <tr>
@@ -26,8 +26,8 @@
                     <td>{{ trade.type }}</td>
                     <td>{{ trade.stock_ticker }}</td>
                     <td>{{ trade.amount }}</td>
-                    <td>{{ trade.price }}</td>
-                    <td>{{ trade.amount * trade.price }}</td>
+                    <td>{{ trade.price | usd }}</td>
+                    <td>{{ (trade.amount * trade.price) | usd }}</td>
                     <td>{{ trade.comment }}</td>
                     <td>
                         <button class="btn btn-danger btn-sm" 

@@ -476,6 +476,10 @@ def profile():
             # Check whether username alrady exists in database
             elif len(rows) != 0:
                 return apology("Username already exists", 400)
+            
+            # Check whether username is not too long
+            elif len(new_username) > 25:
+                return apology("Username is too long", 400)
 
             # Change username
             execute_query("UPDATE users SET username = ? WHERE id = ?", (new_username, user_id))
@@ -493,14 +497,22 @@ def profile():
             if not (old_password and new_password and conf_password):
                 return apology("Must enter all password fields", 400)
 
-            # Check whether new password and password confirmation match
-            if new_password != conf_password:
-                return apology("Re-entered password doesn't match new password", 400)
-
             # Check whether old password is correct
             database_hash = execute_query("SELECT hash FROM users WHERE id = ?", (user_id,))[0]["hash"]
             if not check_password_hash(database_hash, old_password):
                 return apology("Old password is incorrect", 400)
+
+            # Check whether new password and password confirmation match
+            if new_password != conf_password:
+                return apology("Re-entered password doesn't match new password", 400)
+            
+            # Check whether new password is not too short
+            if len(new_password) < 5:
+                return apology("New password is too short", 400)
+
+            # Check whether new password is not too long
+            if len(new_password) > 1000:
+                return apology("New password is too long", 400)
 
             # Change password
             passhash = generate_password_hash(new_password)
@@ -522,7 +534,7 @@ def p2p():
     user_id = session["user_id"]
 
     # Get all p2p trade proposals
-    p2p_trades = execute_query("SELECT p2p_market.*, users.username FROM p2p_market JOIN users ON p2p_market.user_id = users.id WHERE p2p_market.user_id != ?", (user_id,))
+    p2p_trades = execute_query("SELECT p2p_market.*, users.username FROM p2p_market JOIN users ON p2p_market.user_id = users.id")
 
     # Convert to datetime object
     p2p_trades = [dict(p2p_trade) for p2p_trade in p2p_trades]
@@ -674,7 +686,7 @@ def p2p():
             flash("Bought!")
             return redirect("/p2p")
 
-    return render_template("p2p.html", p2p_trades=p2p_trades)
+    return render_template("p2p.html", p2p_trades=p2p_trades, user_id=user_id)
 
 
 @app.route("/propose", methods=["GET", "POST"])

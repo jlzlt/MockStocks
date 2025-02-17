@@ -3,10 +3,11 @@
 {% block title %}Propose a Trade{% endblock %}
 
 {% block main %}
-    <h1>Propose a Trade</h1>
+    <a href="/p2p" class="btn btn-secondary">← Back</a>
+    <h1 style="padding:30px;">Propose a Trade</h1>
 
     <!-- Trade Proposal Form -->
-    <form id="trade-form" action="/propose" method="POST" style="padding-top:30px;">
+    <form id="trade-form" action="/propose" method="POST">
         <!-- Row for Trade Type, Stock Ticker, Quantity, and Proposed Price -->
         <div class="row justify-content-center mb-3">
             <div class="col-md-3">
