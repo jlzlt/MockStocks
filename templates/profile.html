@@ -78,10 +78,10 @@
             document.querySelectorAll("form input").forEach(input => {
                 input.addEventListener("keypress", function (event) {
                     if (event.key === "Enter") {
-                        event.preventDefault(); // Prevent default form submission
-                        formToSubmit = this.closest("form"); // Store the form
+                        event.preventDefault();
+                        formToSubmit = this.closest("form");
                         let modal = new bootstrap.Modal(document.getElementById("confirmModal")); 
-                        modal.show(); // Show the confirmation modal
+                        modal.show();
                     }
                 });
             });

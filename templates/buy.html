@@ -36,6 +36,7 @@
     </div>
 
     <script>
+        // Function to get real time prices for stocks
         async function getStockPrice(symbol) {
                 try {
                     let response = await fetch(`/quote_json?symbol=${symbol}`);
@@ -51,7 +52,8 @@
                     return null;
                 }
             }
-
+        
+        // Script to handle confirmation modal for buying action
         async function showBuyConfirmModal(event) {
             event.preventDefault();
 
@@ -78,7 +80,8 @@
             let modal = new bootstrap.Modal(document.getElementById('buyConfirmModal'));
             modal.show();
         }
-
+        
+        // Submitting buying action in confirmation modal
         function submitBuyForm() {
             document.getElementById("buyForm").submit();
         }

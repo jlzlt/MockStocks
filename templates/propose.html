@@ -22,7 +22,7 @@
                 <select class="form-control d-none" id="stockDropdown" name="symbol">
                     <option value="" disabled selected>Choose stock</option>
                     {% for stock in stocks_owned %}
-                        <option value="{{ stock.stock_owned }}">{{ stock.stock_owned }}</option>
+                        <option value="{{ stock.stock_owned }}">{{ stock.stock_owned }} ({{ stock.amount_owned }} share(s) available)</option>
                     {% endfor %}
                 </select>
                 <input autocomplete="off" class="form-control" id="stockTicker" name="symbol" placeholder="Stock Ticker" type="text">
@@ -46,12 +46,14 @@
         </div>
 
         <!-- Submit Button -->
-        <button class="btn btn-primary confirm-btn" type="button" data-bs-toggle="modal" data-bs-target="#confirmModal" onclick="prepareConfirmation()">
+        <button class="btn btn-primary confirm-btn" type="button" data-bs-toggle="modal" data-bs-target="#confirmModal" onclick="prepareConfirmation()" style="margin-bottom: 20px;">
             Submit Trade Proposal
-        </button>
+        </button><br>
+        <small class="text-muted">*Once buying proposal gets submitted your cash needed for that transaction will get frozen until trade gets executed or you remove your proposal</small><br>
+        <small class="text-muted">*Once selling proposal gets submitted your stocks needed for that transaction will get frozen until trade gets executed or you remove your proposal</small>
     </form>   
 
-    <!-- 🔄 Confirmation Modal -->
+    <!-- Confirmation Modal -->
     <div class="modal fade" id="confirmModal" tabindex="-1">
         <div class="modal-dialog modal-dialog-centered">
             <div class="modal-content">
@@ -71,6 +73,7 @@
     </div>
 
     <script>
+        // Toggles between a dropdown and input field based on trade type
         function toggleStockField() {
             let tradeType = document.getElementById("type").value;
             let stockDropdown = document.getElementById("stockDropdown");
@@ -87,6 +90,7 @@
             }
         }
 
+        // Calculates the total cost of the trade (quantity * price)
         function updateTotal() {
             let shares = parseFloat(document.getElementById("shares").value) || 0;
             let price = parseFloat(document.getElementById("price").value) || 0;
@@ -94,6 +98,7 @@
             return total;
         }
 
+        // Prepares and displays trade details for confirmation
         function prepareConfirmation() {
             let tradeType = document.getElementById("type").value;
             let stock = tradeType === "SELLING" ? document.getElementById("stockDropdown").value : document.getElementById("stockTicker").value.toUpperCase();
@@ -120,11 +125,12 @@
         }
 
         document.addEventListener("DOMContentLoaded", function () {
+            // Event listener to confirm button to submit the trade form
             document.getElementById("confirm-action-btn").addEventListener("click", function () {
                 document.getElementById("trade-form").submit();
             });
-
-            // Character countdown for comment field
+            
+            // Character counter for the comment field
             let commentField = document.getElementById("comment");
             let charCounter = document.getElementById("charCounter");
 

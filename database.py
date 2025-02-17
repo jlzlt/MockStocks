@@ -38,12 +38,33 @@ def execute_query(query, params=(), fetchone=False):
     finally:
         cursor.close()  # Always close the cursor
 
+def execute_multiple_queries(queries):
+    """
+    Execute multiple queries as an atomic transaction.
+    queries: List of tuples (query, params)
+    Returns True if successful, False if rollback occurs.
+    """
+    db = get_db_connection()
+    try:
+        cursor = db.cursor()
+        for query, params in queries:
+            cursor.execute(query, params)
+        db.commit()  # Commit all queries together
+        return True
+    except sqlite3.Error as e:
+        db.rollback()  # Roll back all queries if any fail
+        print(f"Transaction failed: {e}")
+        return False
+    finally:
+        cursor.close()
+
 def initialize_database():
     """Ensure required tables exist in the database."""
     with sqlite3.connect(DATABASE) as conn:
         db = conn.cursor()
 
         db.executescript("""
+                         
         CREATE TABLE IF NOT EXISTS users (
             id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
             username TEXT UNIQUE NOT NULL,
@@ -63,26 +84,13 @@ def initialize_database():
             UNIQUE (user_id, stock_ticker)
         );
 
-        CREATE TABLE IF NOT EXISTS stock_buys (
-            buy_id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
-            time_bought DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-            stock_bought TEXT NOT NULL,
-            price_bought REAL NOT NULL,
-            amount_bought NUMERIC NOT NULL,
+        CREATE TABLE IF NOT EXISTS market_transactions (
+            transaction_id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+            time_transacted DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            stock_ticker TEXT NOT NULL,
+            shares NUMERIC NOT NULL,
+            price_per_share REAL NOT NULL,
             type TEXT NOT NULL,
-            p2p_counterpartyid INTEGER,
-            user_id INTEGER NOT NULL,
-            FOREIGN KEY (user_id) REFERENCES users(id)
-        );
-
-        CREATE TABLE IF NOT EXISTS stock_sells (
-            sell_id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
-            time_sold DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-            stock_sold TEXT NOT NULL,
-            price_sold REAL NOT NULL,
-            amount_sold NUMERIC NOT NULL,
-            type TEXT NOT NULL,
-            p2p_counterpartyid INTEGER,
             user_id INTEGER NOT NULL,
             FOREIGN KEY (user_id) REFERENCES users(id)
         );
@@ -98,19 +106,44 @@ def initialize_database():
             user_id INTEGER NOT NULL,
             FOREIGN KEY (user_id) REFERENCES users(id)
         );
+                         
+        CREATE TABLE IF NOT EXISTS p2p_transactions (
+            transaction_id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+            time_transacted DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            buyer_id INTEGER NOT NULL,
+            seller_id INTEGER NOT NULL,
+            stock_ticker TEXT NOT NULL,
+            shares NUMERIC NOT NULL,
+            price_per_share REAL NOT NULL,            
+            comment TEXT,
+            FOREIGN KEY (buyer_id) REFERENCES users(id),
+            FOREIGN KEY (seller_id) REFERENCES users(id)
+        );
 
-        -- Indexes for faster lookups
+        -- Users table: Ensure quick lookup by username and ID
         CREATE UNIQUE INDEX IF NOT EXISTS idx_username ON users (username);
-        CREATE INDEX IF NOT EXISTS idx_user_id_buys ON stock_buys (user_id);
-        CREATE INDEX IF NOT EXISTS idx_user_id_sells ON stock_sells (user_id);
-        CREATE INDEX IF NOT EXISTS idx_stock_ownership_user_id ON stock_ownership (user_id);
-        CREATE INDEX IF NOT EXISTS idx_p2p_market_user_id ON p2p_market (user_id);
-        CREATE INDEX IF NOT EXISTS idx_stock_buys_ticker ON stock_buys (stock_bought);
-        CREATE INDEX IF NOT EXISTS idx_stock_sells_ticker ON stock_sells (stock_sold);
+        CREATE INDEX IF NOT EXISTS idx_user_id ON users (id);
+
+        -- Stock Ownership: Fast lookup for a user's stock holdings
+        CREATE INDEX IF NOT EXISTS idx_stock_ownership_user ON stock_ownership (user_id);
+        CREATE INDEX IF NOT EXISTS idx_stock_ownership_ticker ON stock_ownership (stock_ticker);
+
+        -- Market Transactions: Indexes for searching transactions by user and stock
+        CREATE INDEX IF NOT EXISTS idx_market_transactions_user ON market_transactions (user_id);
+        CREATE INDEX IF NOT EXISTS idx_market_transactions_ticker ON market_transactions (stock_ticker);
+        CREATE INDEX IF NOT EXISTS idx_market_transactions_time ON market_transactions (time_transacted);
+
+        -- P2P Market: Searching by user, stock ticker, and time
+        CREATE INDEX IF NOT EXISTS idx_p2p_market_user ON p2p_market (user_id);
         CREATE INDEX IF NOT EXISTS idx_p2p_market_ticker ON p2p_market (stock_ticker);
-        CREATE INDEX IF NOT EXISTS idx_stock_buys_time ON stock_buys (time_bought);
-        CREATE INDEX IF NOT EXISTS idx_stock_sells_time ON stock_sells (time_sold);
         CREATE INDEX IF NOT EXISTS idx_p2p_market_time ON p2p_market (time_posted);
+
+        -- P2P Transactions: Indexing buyer and seller for fast retrieval
+        CREATE INDEX IF NOT EXISTS idx_p2p_transactions_buyer ON p2p_transactions (buyer_id);
+        CREATE INDEX IF NOT EXISTS idx_p2p_transactions_seller ON p2p_transactions (seller_id);
+        CREATE INDEX IF NOT EXISTS idx_p2p_transactions_ticker ON p2p_transactions (stock_ticker);
+        CREATE INDEX IF NOT EXISTS idx_p2p_transactions_time ON p2p_transactions (time_transacted);
+                         
         """)
 
         conn.commit()

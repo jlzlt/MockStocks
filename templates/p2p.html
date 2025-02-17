@@ -15,8 +15,8 @@
                     <th>Proposed by</th>
                     <th>Type</th>
                     <th>Stock</th>
-                    <th>Quantity</th>
-                    <th>Price</th>
+                    <th>Price per Share</th>
+                    <th>Quantity</th>                    
                     <th>Total</th>
                     <th>Comment</th>
                     <th>Action</th>
@@ -29,8 +29,8 @@
                     <td>{{ trade.username }}</td>
                     <td>{{ trade.type }}</td>
                     <td>{{ trade.stock_ticker }}</td>
-                    <td>{{ trade.amount }}</td>
                     <td>{{ trade.price | usd }}</td>
+                    <td>{{ trade.amount }}</td>                    
                     <td>{{ (trade.amount * trade.price) | usd }}</td>
                     <td>{{ trade.comment }}</td>
                     <td>
@@ -76,6 +76,7 @@
     </div>
 
     <script>
+        // Function for confirmation of trade action
         function confirmTrade(tradeId, action, stock, amount, price, proposer) {
             let total = amount * price;
             let message = `Are you sure you want to <strong>${action.toLowerCase()}</strong> <strong>${amount} shares</strong> of <strong>${stock}</strong> at <strong>$${price} per share</strong> (Total: <strong>$${total}</strong>) from <strong>${proposer}</strong>?`;

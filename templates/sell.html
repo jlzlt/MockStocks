@@ -18,7 +18,7 @@
         </div>
 
         <div class="mb-3">
-            <input autocomplete="off" class="form-control mx-auto w-auto" name="shares" id="shares" placeholder="Enter number of shares to sell" type="number" min="0" step="0.01" required>
+            <input autocomplete="off" class="form-control mx-auto" name="shares" id="shares" placeholder="Enter number of shares to sell" type="number" min="0" step="0.01" required oninput="validateShares()" style="width: 255px;">
         </div>
 
         <button class="btn btn-primary" type="button" onclick="confirmSell()">Submit</button>
@@ -44,13 +44,33 @@
     </div>
 
     <script>
+        // Updates the available shares when a stock is selected from the dropdown
         function updateAvailableShares() {
             let selectedStock = document.getElementById("symbol");
             let availableShares = selectedStock.options[selectedStock.selectedIndex].getAttribute("data-available") || 0;
             availableShares = parseFloat(availableShares).toFixed(2);
+
+            // Update available shares text
             document.getElementById("availableSharesText").innerText = `Available shares: ${availableShares}`;
+
+            // Set max value for input field
+            let sharesInput = document.getElementById("shares");
+            sharesInput.value = "";
+            sharesInput.setAttribute("max", availableShares);
         }
 
+        // Ensures the user does not enter more shares than available
+        function validateShares() {
+            let sharesInput = document.getElementById("shares");
+            let maxShares = parseFloat(sharesInput.getAttribute("max")) || 0;
+            let enteredShares = parseFloat(sharesInput.value);
+
+            if (enteredShares > maxShares) {
+                sharesInput.value = maxShares;
+            }
+        }
+
+        // Fetches the latest stock price and confirms the sale with the user
         async function confirmSell() {
             let stock = document.getElementById("symbol").value;
             let shares = document.getElementById("shares").value;
@@ -80,6 +100,7 @@
             modal.show();
         }
 
+        // Submits the sell form after user confirmation
         function submitSell() {
             document.getElementById("sellForm").submit();
         }

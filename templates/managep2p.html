@@ -96,30 +96,71 @@
                             <label class="form-label">Comment:</label>
                             <input type="text" id="edit_comment" name="comment" class="form-control" max="200">
                         </div>
-                        <button type="submit" class="btn btn-primary">Save Changes</button>
+                        <button type="button" class="btn btn-primary" id="openEditConfirm">Save Changes</button>
                     </form>
                 </div>
             </div>
         </div>
     </div>
 
+    <!-- Edit Confirmation Modal -->
+    <div class="modal fade" id="editConfirmModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Confirm Trade Edit</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <p id="editConfirmText"></p>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="button" class="btn btn-primary" id="confirmEditBtn">Confirm</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <script>
+        // Function for removing p2p trade proposal
         function removeTrade(tradeId, stock, amount, price) {
             let message = `Are you sure you want to remove your trade for <strong>${amount} shares</strong> of <strong>${stock}</strong> at <strong>$${price} per share</strong>?`;
+            
             document.getElementById("removeConfirmText").innerHTML = message;
             document.getElementById("remove_trade_id").value = tradeId;
-            let modal = new bootstrap.Modal(document.getElementById('removeConfirmModal'));
-            modal.show();
+
+            let removeConfirmModal = new bootstrap.Modal(document.getElementById('removeConfirmModal'));
+            removeConfirmModal.show();
         }
 
+        // Function for editting p2p trade proposal
         function editTrade(tradeId, stock, amount, price, comment) {
             document.getElementById("edit_trade_id").value = tradeId;
             document.getElementById("edit_stock_ticker").value = stock;
             document.getElementById("edit_amount").value = amount;
             document.getElementById("edit_price").value = price;
             document.getElementById("edit_comment").value = comment;
+            
             let modal = new bootstrap.Modal(document.getElementById('editTradeModal'));
             modal.show();
         }
+        
+        // Function for confirmation modal for editting modal
+        document.getElementById("openEditConfirm").addEventListener("click", function () {
+            let stock = document.getElementById("edit_stock_ticker").value;
+            let amount = document.getElementById("edit_amount").value;
+            let price = document.getElementById("edit_price").value;
+            let message = `Are you sure you want to update your trade to <strong>${amount} shares</strong> of <strong>${stock}</strong> at <strong>$${price} per share</strong>? (Total value: <strong>$${amount * price}</strong>)`;
+    
+            document.getElementById("editConfirmText").innerHTML = message;
+            let editConfirmModal = new bootstrap.Modal(document.getElementById('editConfirmModal'));
+            editConfirmModal.show();
+        });
+        
+        // Function to submit data after user confirms edit
+        document.getElementById("confirmEditBtn").addEventListener("click", function () {
+            document.getElementById("editTradeForm").submit();
+        });        
     </script>
 {% endblock %}
