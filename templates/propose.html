@@ -22,7 +22,7 @@
                 <select class="form-control d-none" id="stockDropdown" name="symbol">
                     <option value="" disabled selected>Choose stock</option>
                     {% for stock in stocks_owned %}
-                        <option value="{{ stock.stock_owned }}">{{ stock.stock_owned }} ({{ stock.amount_owned }} share(s) available)</option>
+                        <option value="{{ stock.stock_owned }}">{{ stock.stock_owned }} ({{ stock.amount_owned | round(2) }} share(s) available)</option>
                     {% endfor %}
                 </select>
                 <input autocomplete="off" class="form-control" id="stockTicker" name="symbol" placeholder="Stock Ticker" type="text">
