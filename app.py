@@ -1046,7 +1046,7 @@ def managep2p():
                     ),
 
                     # Adjust frozen stock properly
-                    execute_query(
+                    (
                         "UPDATE stock_ownership SET frozen_amount = frozen_amount - ? + ? WHERE user_id = ? AND stock_ticker = ?",
                         (old_frozen_amount, new_frozen_amount, user_id, trade["stock_ticker"])
                     )
