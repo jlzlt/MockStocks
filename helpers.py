@@ -80,3 +80,4 @@ def get_stock_chart(symbol):
     )
 
     return fig.to_html(full_html=False)
+  
