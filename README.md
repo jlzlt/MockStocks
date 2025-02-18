@@ -20,14 +20,17 @@ Make sure you have the following installed:
 
 ### 2.) Clone the Repository
 Open a terminal and run:
-> git clone https://github.com/jlzlt/MockStocks.git  
-> cd MockStocks
+```
+git clone https://github.com/jlzlt/MockStocks.git  
+cd MockStocks
+```
 
 ### 3.) Create a Virtual Environment (Optional, Recommended)
 To keep dependencies isolated, create and activate a virtual environment:  
 Windows:  
 > python -m venv venv  
 > venv\Scripts\activate  
+
 Mac/Linux:  
 > python3 -m venv venv  
 > source venv/bin/activate  
