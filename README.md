@@ -4,7 +4,7 @@ A stock trading simulation web application that allows users to **buy, sell, and
 
 Additionally, it features a **peer-to-peer (P2P) market**, where registered users can trade stocks with each other. You can create multiple profiles to test P2P trade proposals.
 
-This project was built as part of my Vinted Academy submission, showcasing my skills in Python, Flask, SQLite, and web development.
+This project was built as part of my Vinted Academy submission, showcasing my skills in Python, Flask, SQLite, and web development. It follows the Model-View-Controller (MVC) pattern.
 
 
 ## Installation Guide
