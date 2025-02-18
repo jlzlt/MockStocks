@@ -12,10 +12,10 @@ This project was built as part of my Vinted Academy submission, showcasing my sk
 Follow these steps to set up and run MockStocks on your local machine:
 
 ### 1.) Prerequisites
-Make sure you have the following installed:
-Python 3.10+ (https://www.python.org/downloads/)
-pip (comes with Python)
-Git (https://git-scm.com/downloads)
+Make sure you have the following installed:\
+Python 3.10+ (https://www.python.org/downloads/)\
+pip (comes with Python)\
+Git (https://git-scm.com/downloads)\
 Virtual Environment (venv) (optional but recommended)
 
 ### 2.) Clone the Repository
