@@ -1,4 +1,4 @@
-# <<<< MockStocks >>>>
+# MockStocks
 
 A stock trading simulation web application that allows users to buy, sell, and track stocks in their portfolio. The platform fetches real-time stock prices, updates user balances, and maintains a transaction history.
 
@@ -7,7 +7,7 @@ Additionally, it features a **peer-to-peer (P2P) market**, where registered user
 This project was built as part of my Vinted Academy submission, showcasing my skills in Python, Flask, SQLite, and web development.
 
 
-## << Installation Guide >>
+## Installation Guide
 
 Follow these steps to set up and run MockStocks on your local machine:
 
@@ -42,7 +42,7 @@ Start the application by running:
 The app will be available at: http://127.0.0.1:5000/
 
 
-## << Features >>
+## Features
 
 ### Security & Authentication
 
@@ -77,7 +77,7 @@ The app will be available at: http://127.0.0.1:5000/
 -> Stock data visualization using Plotly and yfinance
 
 
-## << Tech Stack >>
+## Tech Stack
 
 Backend: Python, Flask, SQLite3
 Frontend: HTML, CSS, JavaScript
