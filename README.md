@@ -45,6 +45,9 @@ Run the following command to install required packages:
 Start the application by running:  
 `python app.py`  
 
+Or if port 5000 is taken use another port (for example 5001):\
+`PORT=5001 python app.py`
+
 Project is also live on this address (however, it can take up to 1 minute to load at first because website needs to cold start):  
 https://mockstocks-qayz.onrender.com/
 
