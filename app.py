@@ -92,10 +92,11 @@ def index():
         (user_id,)
     )
 
-    # Populate current prices dictionary to get up to date prices for the stocks user owns
+    # Populate current prices dictionary with up-to-date stock prices
     current_prices = {}
     for stock in range(len(stocks)):
         quote = lookup(stocks[stock]["stock_owned"])
+        print(quote)
         current_prices[stocks[stock]["stock_owned"]] = quote["price"]
 
     # Find out how much cash user has
