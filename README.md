@@ -45,7 +45,8 @@ Run the following command to install required packages:
 Start the application by running:  
 `python app.py`  
 
-The app will be available at: http://127.0.0.1:5000/
+Project is also live on this address (however, it can take up to 1 minute to load at first because website needs to cold start):  
+https://mockstocks-qayz.onrender.com/
 
 
 ## Features
