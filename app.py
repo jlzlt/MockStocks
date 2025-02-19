@@ -96,7 +96,6 @@ def index():
     current_prices = {}
     for stock in range(len(stocks)):
         quote = lookup(stocks[stock]["stock_owned"])
-        print(quote)
         current_prices[stocks[stock]["stock_owned"]] = quote["price"]
 
     # Find out how much cash user has
